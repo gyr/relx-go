@@ -32,7 +32,9 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error loading configuration from %s: %v", cfgFile, err)
 		}
-		log.Printf("Configuration loaded from %s", cfgFile)
+        if cfg.Debug || debugFlag {
+            log.Printf("Configuration loaded from %s", cfgFile)
+        }
 	} else {
 		// Provide a default configuration if no file is found/loaded
 		cfg = &config.Config{
@@ -47,11 +49,14 @@ func main() {
 
 	args := flag.Args() // Get non-flag arguments after flag.Parse()
 
+	validCommands := []string{"pr", "status", "bugowner"}
+
 	if len(args) < 1 {
 		fmt.Println("Usage: gyr-grxs <command> [arguments]")
 		fmt.Println("\nCommands:")
-		fmt.Println("  pr <owner> <repo>       Get list of open Pull Requests (uses Gitea backend)")
-		fmt.Println("  status <prj> <pkg>      Get build status for a package (uses OBS backend)")
+		for _, cmd := range validCommands {
+			fmt.Printf("  %s\n", cmd)
+		}
 		os.Exit(1)
 	}
 
@@ -66,12 +71,72 @@ func main() {
 		app.HandlePullRequest(cfg, commandArgs[0], commandArgs[1])
 
 	case "status":
-		if len(commandArgs) < 2 {
-			log.Fatal("Error: 'status' requires project and package arguments.")
+		statusCmd := flag.NewFlagSet("status", flag.ContinueOnError)
+		projectFlag := statusCmd.String("p", "", "OBS project")
+
+		statusCmd.Usage = func() {
+			fmt.Fprintf(os.Stderr, "Usage of %s status:\n", os.Args[0])
+			fmt.Fprintf(os.Stderr, "  -p <project>    OBS project\n")
+			fmt.Fprintf(os.Stderr, "  <package>       Package\n")
 		}
-		app.HandleBuildStatus(cfg, commandArgs[0], commandArgs[1])
+
+		err := statusCmd.Parse(commandArgs)
+		if err != nil {
+			if err == flag.ErrHelp {
+				os.Exit(0)
+			}
+			// The flag package already printed an error and usage, so just exit.
+			os.Exit(1)
+		}
+
+		if *projectFlag == "" || statusCmd.NArg() < 1 {
+			fmt.Fprintf(os.Stderr, "Error: 'status' requires project and package arguments.\n")
+			statusCmd.Usage()
+			os.Exit(1)
+		}
+		app.HandleBuildStatus(cfg, *projectFlag, statusCmd.Arg(0))
+
+	case "bugowner":
+		bugownerCmd := flag.NewFlagSet("bugowner", flag.ContinueOnError)
+		pkgFlag := bugownerCmd.String("p", "", "Specify the package")
+		maintainerFlag := bugownerCmd.String("m", "", "Specify the maintainer")
+
+		bugownerCmd.Usage = func() {
+			fmt.Fprintf(os.Stderr, "Usage of %s bugowner:\n", os.Args[0])
+			fmt.Fprintf(os.Stderr, "  -p <pkg>          Get bugowners for a specific package\n")
+			fmt.Fprintf(os.Stderr, "  -m <maintainer>   List packages maintained by a user\n")
+		}
+
+		err = bugownerCmd.Parse(commandArgs)
+		if err != nil {
+			if err == flag.ErrHelp {
+				os.Exit(0)
+			}
+			// The flag package already printed an error and usage, so just exit.
+			os.Exit(1)
+		}
+
+		if (*pkgFlag != "" && *maintainerFlag != "") || (*pkgFlag == "" && *maintainerFlag == "") {
+			fmt.Fprintf(os.Stderr, "Error: For 'bugowner', you must provide either -p (package) OR -m (maintainer), but not both.\n")
+			bugownerCmd.Usage()
+			os.Exit(1)
+		}
+
+		if *pkgFlag != "" {
+			// TODO: Implement app.HandleBugownerByPackage(cfg, *pkgFlag)
+			// This function should fetch bugowners for the given package.
+			fmt.Printf("Getting bugowners for package: %s\n", *pkgFlag) // Placeholder
+		} else { // *maintainerFlag != ""
+			// TODO: Implement app.HandlePackagesByMaintainer(cfg, *maintainerFlag)
+			// This function should list packages maintained by the given user.
+			fmt.Printf("Listing packages maintained by: %s\n", *maintainerFlag) // Placeholder
+		}
 
 	default:
-		log.Fatalf("Unknown command: %s", command)
+		fmt.Printf("Unknown command: %s. Possible commands are:\n", command)
+		for _, cmd := range validCommands {
+			fmt.Printf("  %s\n", cmd)
+		}
+		os.Exit(1)
 	}
 }
