@@ -7,12 +7,14 @@ import (
 	"path/filepath"
 
 	lua "github.com/yuin/gopher-lua"
+
+	"github.com/gyr/grxs/pkg/logging"
 )
 
 // Config holds the application's configuration.
 type Config struct {
 	CacheDir string
-	Debug    bool
+	Logger   *logging.Logger
 }
 
 // LoadConfig loads the configuration from a Lua file.
@@ -35,15 +37,10 @@ func LoadConfig(configPath string) (*Config, error) {
 			cfg.CacheDir = cacheDir.String()
 		}
 
-		// Read debug
-		if debug := luaConfig.RawGetString("debug"); debug.Type() == lua.LTBool {
-			cfg.Debug = lua.LVAsBool(debug)
-		}
-
 		return cfg, nil
 	}
 
-	return nil, fmt.Errorf("Lua config file did not return a table")
+	return nil, fmt.Errorf("lua config file did not return a table")
 }
 
 // FindConfigFile searches for the configuration file in a predefined order.

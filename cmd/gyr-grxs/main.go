@@ -1,50 +1,54 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"log"
 	"os"
+	"flag"
 
 	"github.com/gyr/grxs/pkg/app"
 	"github.com/gyr/grxs/pkg/config"
+	"github.com/gyr/grxs/pkg/logging"
 )
 
 func main() {
+	var verbose, debug bool
 	var configPath string
-	var debugFlag bool
 
-	flag.StringVar(&configPath, "c", "", "Path to the configuration file")
-	flag.StringVar(&configPath, "config", "", "Path to the configuration file (shorthand -c)")
-	flag.BoolVar(&debugFlag, "d", false, "Enable debug logging")
-	flag.BoolVar(&debugFlag, "debug", false, "Enable debug logging (shorthand -d)")
+	flag.BoolVar(&verbose, "v", false, "Enable verbose output (INFO level).")
+	flag.BoolVar(&debug, "d", false, "Enable debug output (DEBUG level).")
+	flag.StringVar(&configPath, "c", "", "Path to the configuration file.")
 	flag.Parse()
+
+	var logLevel logging.LogLevel
+	if debug {
+		logLevel = logging.LevelDebug
+	} else if verbose {
+		logLevel = logging.LevelInfo
+	} else {
+		logLevel = logging.LevelError
+	}
+	logger := logging.NewLogger(logLevel)
 
 	// Find and load configuration
 	cfgFile, err := config.FindConfigFile(configPath)
 	if err != nil {
-		log.Printf("Warning: %v. Proceeding without custom configuration.", err)
+		logger.Infof("Warning: %v. Proceeding without custom configuration.", err)
 	}
 
 	var cfg *config.Config
 	if cfgFile != "" {
 		cfg, err = config.LoadConfig(cfgFile)
 		if err != nil {
-			log.Fatalf("Error loading configuration from %s: %v", cfgFile, err)
+			logger.Fatalf("Error loading configuration from %s: %v", cfgFile, err)
 		}
-        if cfg.Debug || debugFlag {
-            log.Printf("Configuration loaded from %s", cfgFile)
-        }
+		cfg.Logger = logger // Assign the logger to the config
+		logger.Debug("Configuration loaded from: ", cfgFile)
 	} else {
 		// Provide a default configuration if no file is found/loaded
 		cfg = &config.Config{
 			CacheDir: "", // Default to empty, gitutils will use its own default
+			Logger:   logger, // Assign the logger to the default config
 		}
-	}
-
-	// Command-line debug flag overrides config file setting
-	if debugFlag {
-		cfg.Debug = true
 	}
 
 	args := flag.Args() // Get non-flag arguments after flag.Parse()
@@ -66,7 +70,7 @@ func main() {
 	switch command {
 	case "pr":
 		if len(commandArgs) < 2 {
-			log.Fatal("Error: 'pr' requires owner and repo arguments.")
+			logger.Fatal("Error: 'pr' requires owner and repo arguments.")
 		}
 		app.HandlePullRequest(cfg, commandArgs[0], commandArgs[1])
 
