@@ -1,9 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
-	"flag"
 
 	"github.com/gyr/grxs/pkg/app"
 	"github.com/gyr/grxs/pkg/config"
@@ -46,7 +46,7 @@ func main() {
 	} else {
 		// Provide a default configuration if no file is found/loaded
 		cfg = &config.Config{
-			CacheDir: "", // Default to empty, gitutils will use its own default
+			CacheDir: "",     // Default to empty, gitutils will use its own default
 			Logger:   logger, // Assign the logger to the default config
 		}
 	}
@@ -127,15 +127,10 @@ func main() {
 		}
 
 		if *pkgFlag != "" {
-			// TODO: Implement app.HandleBugownerByPackage(cfg, *pkgFlag)
-			// This function should fetch bugowners for the given package.
-			fmt.Printf("Getting bugowners for package: %s\n", *pkgFlag) // Placeholder
+			app.HandleBugownerByPackage(cfg, *pkgFlag)
 		} else { // *maintainerFlag != ""
-			// TODO: Implement app.HandlePackagesByMaintainer(cfg, *maintainerFlag)
-			// This function should list packages maintained by the given user.
-			fmt.Printf("Listing packages maintained by: %s\n", *maintainerFlag) // Placeholder
+			app.HandlePackagesByMaintainer(cfg, *maintainerFlag)
 		}
-
 	default:
 		fmt.Printf("Unknown command: %s. Possible commands are:\n", command)
 		for _, cmd := range validCommands {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 
 	lua "github.com/yuin/gopher-lua"
 
@@ -14,6 +15,9 @@ import (
 // Config holds the application's configuration.
 type Config struct {
 	CacheDir string
+	RepoURL  string
+	RepoName string
+	Branch   string
 	Logger   *logging.Logger
 }
 
@@ -29,12 +33,33 @@ func LoadConfig(configPath string) (*Config, error) {
 	// The Lua config file is expected to return a table named 'config'
 	if tbl := L.Get(-1); tbl.Type() == lua.LTTable {
 		luaConfig := tbl.(*lua.LTable)
-		
+
 		cfg := &Config{}
 
 		// Read cache_dir
 		if cacheDir := luaConfig.RawGetString("cache_dir"); cacheDir.Type() == lua.LTString {
 			cfg.CacheDir = cacheDir.String()
+		}
+
+		// Read repo_url
+		if repoURL := luaConfig.RawGetString("repo_url"); repoURL.Type() == lua.LTString {
+			cfg.RepoURL = repoURL.String()
+
+			// Derive RepoName from RepoURL
+			if cfg.RepoURL != "" {
+				// Remove "gitea @" prefix if present
+				repoURLClean := strings.TrimPrefix(cfg.RepoURL, "gitea@")
+
+				// Get the base name (last component) of the URL path
+				base := filepath.Base(repoURLClean)
+				// Remove the ".git" suffix if it exists
+				cfg.RepoName = strings.TrimSuffix(base, ".git")
+			}
+		}
+
+		// Read branch
+		if branch := luaConfig.RawGetString("branch"); branch.Type() == lua.LTString {
+			cfg.Branch = branch.String()
 		}
 
 		return cfg, nil

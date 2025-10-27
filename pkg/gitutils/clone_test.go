@@ -6,6 +6,9 @@ import (
 	"os/user"
 	"strings"
 	"testing"
+
+	"github.com/gyr/grxs/pkg/config"
+	"github.com/gyr/grxs/pkg/logging"
 )
 
 func TestCloneRepo_Success(t *testing.T) {
@@ -30,13 +33,19 @@ func TestCloneRepo_Success(t *testing.T) {
 		return []byte("success"), nil
 	}
 
-	cacheDir := "/home/testuser/.cache/grxs"
-	path, err := CloneRepo("https://example.com/test.git", cacheDir)
+	mockCfg := &config.Config{
+		RepoURL:  "https://example.com/test.git",
+		RepoName: "test",
+		CacheDir: "/home/testuser/.cache/grxs",
+		Logger:   logging.NewLogger(logging.LevelDebug),
+	}
+
+	path, err := CloneRepo(mockCfg)
 	if err != nil {
 		t.Fatalf("Expected no error, but got: %v", err)
 	}
 
-	expectedPath := cacheDir + "/test.git"
+	expectedPath := mockCfg.CacheDir + "/" + mockCfg.RepoName
 	if path != expectedPath {
 		t.Errorf("Expected path %q, got %q", expectedPath, path)
 	}
@@ -65,8 +74,14 @@ func TestCloneRepo_ExecFailure(t *testing.T) {
 		return []byte("error"), mockError
 	}
 
-	cacheDir := "/home/testuser/.cache/grxs"
-	_, err := CloneRepo("https://example.com/test.git", cacheDir)
+	mockCfg := &config.Config{
+		RepoURL:  "https://example.com/test.git",
+		RepoName: "test",
+		CacheDir: "/home/testuser/.cache/grxs",
+		Logger:   logging.NewLogger(logging.LevelDebug),
+	}
+
+	_, err := CloneRepo(mockCfg)
 	if err == nil {
 		t.Fatal("Expected an error, but got nil")
 	}
@@ -98,12 +113,19 @@ func TestCloneRepo_EmptyCacheDir(t *testing.T) {
 		return []byte("success"), nil
 	}
 
-	path, err := CloneRepo("https://example.com/test.git", "") // Empty cacheDir
+	mockCfg := &config.Config{
+		RepoURL:  "https://example.com/test.git",
+		RepoName: "test",
+		CacheDir: "", // Empty cacheDir to test default behavior
+		Logger:   logging.NewLogger(logging.LevelDebug),
+	}
+
+	path, err := CloneRepo(mockCfg)
 	if err != nil {
 		t.Fatalf("Expected no error, but got: %v", err)
 	}
 
-	expectedPath := "/home/testuser/.cache/grxs/test.git"
+	expectedPath := "/home/testuser/.cache/grxs/test"
 	if path != expectedPath {
 		t.Errorf("Expected path %q, got %q", expectedPath, path)
 	}
