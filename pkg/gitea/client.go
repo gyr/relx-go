@@ -16,7 +16,7 @@ var execCommand = func(name string, args ...string) ([]byte, error) {
 }
 
 // Client handles interaction with the Gitea API via the 'git-obs api' command.
-type Client struct{
+type Client struct {
 	CacheDir string
 }
 
