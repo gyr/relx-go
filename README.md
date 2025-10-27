@@ -43,6 +43,14 @@ Navigate to the root directory of the project and run the standard Go build comm
 go build -o gyr-grxs ./cmd/gyr-grxs
 ```
 
+### Code Quality and Formatting
+
+To ensure code quality and consistency, the following commands are used:
+
+*   **Dependency Management:** `go mod tidy`
+*   **Code Formatting:** `go fmt ./...`
+*   **Linting:** `golangci-lint run`
+
 A single binary named `gyr-grxs` will be created in your current directory.
 
 ## ✅ Testing
