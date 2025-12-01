@@ -1,4 +1,4 @@
-module github.com/gyr/grxs
+module github.com/gyr/relx-go
 
 go 1.21
 

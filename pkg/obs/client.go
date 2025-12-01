@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/gyr/grxs/pkg/core" // Import core types
+	"github.com/gyr/relx-go/pkg/core" // Import core types
 )
 
 // execCommand is a function that runs a command and returns its output.

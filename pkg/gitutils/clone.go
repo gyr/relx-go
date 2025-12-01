@@ -7,7 +7,7 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"github.com/gyr/grxs/pkg/config"
+	"github.com/gyr/relx-go/pkg/config"
 )
 
 var userCurrent = user.Current
@@ -25,7 +25,7 @@ func CloneRepo(cfg *config.Config) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("gitutils: could not get current user: %w", err)
 		}
-		cfg.CacheDir = filepath.Join(currentUser.HomeDir, ".cache", "grxs")
+		cfg.CacheDir = filepath.Join(currentUser.HomeDir, ".cache", "relx-go")
 	}
 
 	if err := osMkdirAll(cfg.CacheDir, 0755); err != nil {

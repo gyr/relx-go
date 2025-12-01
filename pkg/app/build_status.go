@@ -3,8 +3,8 @@ package app
 import (
 	"fmt"
 
-	"github.com/gyr/grxs/pkg/config"
-	"github.com/gyr/grxs/pkg/obs"
+	"github.com/gyr/relx-go/pkg/config"
+	"github.com/gyr/relx-go/pkg/obs"
 )
 
 // HandleBuildStatus initializes the OBS client, fetches build status, and prints the results.

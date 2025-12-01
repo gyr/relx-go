@@ -3,8 +3,8 @@ package app
 import (
 	"fmt"
 
-	"github.com/gyr/grxs/pkg/config"
-	"github.com/gyr/grxs/pkg/gitea"
+	"github.com/gyr/relx-go/pkg/config"
+	"github.com/gyr/relx-go/pkg/gitea"
 )
 
 // HandlePullRequest initializes the Gitea client, fetches PRs, and prints the results.

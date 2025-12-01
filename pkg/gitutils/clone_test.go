@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gyr/grxs/pkg/config"
-	"github.com/gyr/grxs/pkg/logging"
+	"github.com/gyr/relx-go/pkg/config"
+	"github.com/gyr/relx-go/pkg/logging"
 )
 
 func TestCloneRepo_Success(t *testing.T) {
@@ -36,7 +36,7 @@ func TestCloneRepo_Success(t *testing.T) {
 	mockCfg := &config.Config{
 		RepoURL:  "https://example.com/test.git",
 		RepoName: "test",
-		CacheDir: "/home/testuser/.cache/grxs",
+		CacheDir: "/home/testuser/.cache/relx-go",
 		Logger:   logging.NewLogger(logging.LevelDebug),
 	}
 
@@ -77,7 +77,7 @@ func TestCloneRepo_ExecFailure(t *testing.T) {
 	mockCfg := &config.Config{
 		RepoURL:  "https://example.com/test.git",
 		RepoName: "test",
-		CacheDir: "/home/testuser/.cache/grxs",
+		CacheDir: "/home/testuser/.cache/relx-go",
 		Logger:   logging.NewLogger(logging.LevelDebug),
 	}
 
@@ -125,7 +125,7 @@ func TestCloneRepo_EmptyCacheDir(t *testing.T) {
 		t.Fatalf("Expected no error, but got: %v", err)
 	}
 
-	expectedPath := "/home/testuser/.cache/grxs/test"
+	expectedPath := "/home/testuser/.cache/relx-go/test"
 	if path != expectedPath {
 		t.Errorf("Expected path %q, got %q", expectedPath, path)
 	}

@@ -9,7 +9,7 @@ import (
 
 	lua "github.com/yuin/gopher-lua"
 
-	"github.com/gyr/grxs/pkg/logging"
+	"github.com/gyr/relx-go/pkg/logging"
 )
 
 // Config holds the application's configuration.
@@ -77,25 +77,25 @@ func FindConfigFile(cliConfigPath string) (string, error) {
 		}
 	}
 
-	// 2. Check environment variable GRXS_CONFIG_FILE
-	if envPath := os.Getenv("GRXS_CONFIG_FILE"); envPath != "" {
+	// 2. Check environment variable REXS_GO_CONFIG_FILE
+	if envPath := os.Getenv("REXS_GO_CONFIG_FILE"); envPath != "" {
 		if _, err := os.Stat(envPath); err == nil {
 			return envPath, nil
 		}
 	}
 
-	// 3. Check ~/.config/grxs/config.lua
+	// 3. Check ~/.config/rexs-go/config.lua
 	currentUser, err := user.Current()
 	if err != nil {
 		return "", fmt.Errorf("could not get current user: %w", err)
 	}
-	homeConfigPath := filepath.Join(currentUser.HomeDir, ".config", "grxs", "config.lua")
+	homeConfigPath := filepath.Join(currentUser.HomeDir, ".config", "rexs-go", "config.lua")
 	if _, err := os.Stat(homeConfigPath); err == nil {
 		return homeConfigPath, nil
 	}
 
-	// 4. Check /etc/grxs/config.lua
-	etcConfigPath := filepath.Join("/etc", "grxs", "config.lua")
+	// 4. Check /etc/rexs-go/config.lua
+	etcConfigPath := filepath.Join("/etc", "rexs-go", "config.lua")
 	if _, err := os.Stat(etcConfigPath); err == nil {
 		return etcConfigPath, nil
 	}

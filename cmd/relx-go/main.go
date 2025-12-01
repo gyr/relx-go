@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gyr/grxs/pkg/app"
-	"github.com/gyr/grxs/pkg/config"
-	"github.com/gyr/grxs/pkg/logging"
+	"github.com/gyr/relx-go/pkg/app"
+	"github.com/gyr/relx-go/pkg/config"
+	"github.com/gyr/relx-go/pkg/logging"
 )
 
 func main() {
@@ -56,7 +56,7 @@ func main() {
 	validCommands := []string{"pr", "status", "bugowner"}
 
 	if len(args) < 1 {
-		fmt.Println("Usage: gyr-grxs <command> [arguments]")
+		fmt.Println("Usage: relx-go <command> [arguments]")
 		fmt.Println("\nCommands:")
 		for _, cmd := range validCommands {
 			fmt.Printf("  %s\n", cmd)

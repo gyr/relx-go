@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"os/exec"
 
-	"github.com/gyr/grxs/pkg/core"
+	"github.com/gyr/relx-go/pkg/core"
 )
 
 // execCommand is a function that runs a command and returns its output.

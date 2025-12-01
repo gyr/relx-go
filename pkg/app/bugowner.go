@@ -3,8 +3,8 @@ package app
 import (
 	"fmt"
 
-	"github.com/gyr/grxs/pkg/config"
-	"github.com/gyr/grxs/pkg/gitutils"
+	"github.com/gyr/relx-go/pkg/config"
+	"github.com/gyr/relx-go/pkg/gitutils"
 )
 
 // HandleBugownerByPackage fetches and displays the bug owners for a given package.

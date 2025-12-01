@@ -1,10 +1,10 @@
-# 📦 GRXS (Go Release-Management eXtension Suite)
+# relx-go (Release eXtension for GO)
 
-GRXS is a fast, dependency-minimal **Command-Line Interface (CLI) tool** written in Go for orchestrating release management tasks related to the openSUSE/SUSE ecosystem.
+relx-go is a fast, dependency-minimal **Command-Line Interface (CLI) tool** written in Go for orchestrating release management tasks related to the openSUSE/SUSE ecosystem.
 
 It serves as a unified wrapper for key external APIs and tools, such as the `osc` (OpenSUSE Commander) API for build status and the `git-obs` API for Gitea interactions.
 
-The resulting binary, **`gyr-grxs`**, is self-contained and highly portable.
+The resulting binary, **`relx-go`**, is self-contained and highly portable.
 
 ## ✨ Features
 
@@ -36,12 +36,42 @@ Since this is a CLI application, you can easily build it using the Go toolchain.
 
 ### Building the Executable
 
-Navigate to the root directory of the project and run the standard Go build command:
+There are two main ways to build the executable, depending on your needs.
+
+#### For Local Development
+
+For day-to-day development on your local machine, use the standard `go build` command. This is the quickest and easiest way to get a running executable for your current operating system and architecture.
 
 ```bash
-# Build the executable and name it 'gyr-grxs'
-go build -o gyr-grxs ./cmd/gyr-grxs
+# Build the executable for your current OS/Arch
+go build -o relx-go cmd/relx-go/main.go
 ```
+
+Alternatively, you can use `go run` to compile and execute the application in a single step without creating a persistent binary. This is useful for quickly testing code changes.
+
+```bash
+# Run the application directly
+go run cmd/relx-go/main.go [args]
+```
+For example, to run the `pr` subcommand:
+```bash
+go run cmd/relx-go/main.go pr openSUSE osc
+```
+```
+
+#### For Production and CI/CD (Best Practice)
+
+For creating a distributable binary for a production environment, a CI/CD pipeline, or for sharing with others, it is a best practice to create a statically-linked binary for a specific target. This ensures portability and reproducibility.
+
+The following command creates a statically-linked binary for 64-bit Linux:
+
+```bash
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o relx-go cmd/relx-go/main.go
+```
+
+*   **`CGO_ENABLED=0`**: Disables Cgo, which creates a statically linked binary with no external dependencies. This makes the executable highly portable.
+*   **`GOOS=linux`**: Sets the target Operating System to Linux.
+*   **`GOARCH=amd64`**: Sets the target CPU Architecture to amd64 (64-bit).
 
 ### Code Quality and Formatting
 
@@ -49,13 +79,15 @@ To ensure code quality and consistency, the following commands are used:
 
 *   **Dependency Management:** `go mod tidy`
 *   **Code Formatting:** `go fmt ./...`
+*   **Static Analysis:** `go vet ./...`
+*   **Build:** `go build ./...`
 *   **Linting:** `golangci-lint run`
 
-A single binary named `gyr-grxs` will be created in your current directory.
+A single binary named `relx-go` will be created in your current directory.
 
 ## ✅ Testing
 
-GRXS uses Go's built-in testing package. All tests mock the external command execution to ensure fast and reliable unit testing without relying on the network or installed external binaries.
+relx-go uses Go's built-in testing package. All tests mock the external command execution to ensure fast and reliable unit testing without relying on the network or installed external binaries.
 
 To run all unit tests in the entire project, execute the following command from the project root:
 
@@ -69,20 +101,29 @@ To run tests with verbose output:
 go test -v ./...
 ```
 
+## CI Validation
+
+The following commands are recommended for a CI/CD pipeline to validate the code:
+
+1.  **Install Dependencies:** `go get github.com/stretchr/testify/assert`
+2.  **Tidy Modules:** `go mod tidy`
+3.  **Run Tests:** `go test ./...`
+4.  **Build for Production:** `CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o relx-go cmd/relx-go/main.go`
+
 ## ⚙️ Configuration
 
-GRXS supports loading configuration from a Lua file. This allows you to customize settings such as the cache directory used for cloning Git repositories and enable debug logging.
+relx-go supports loading configuration from a Lua file. This allows you to customize settings such as the cache directory used for cloning Git repositories and enable debug logging.
 
 ### Configuration File Search Order
 
-GRXS searches for a configuration file in the following order, using the first one found:
+relx-go searches for a configuration file in the following order, using the first one found:
 
 1.  **Command-line flag:** Specified using `--config <path>` or `-c <path>`.
-2.  **Environment variable:** The path specified in the `GRXS_CONFIG_FILE` environment variable.
-3.  **User-specific path:** `~/.config/grxs/config.lua`
-4.  **System-wide path:** `/etc/grxs/config.lua`
+2.  **Environment variable:** The path specified in the `RELX_GO_CONFIG_FILE` environment variable.
+3.  **User-specific path:** `~/.config/relx-go/config.lua`
+4.  **System-wide path:** `/etc/relx-go/config.lua`
 
-If no configuration file is found, GRXS will proceed with default settings.
+If no configuration file is found, relx-go will proceed with default settings.
 
 ### Example `config.lua`
 
@@ -103,7 +144,7 @@ Command-line flags provide a way to override or supplement configuration setting
 
 ## 🚀 Usage
 
-The primary executable is `gyr-grxs`. Commands are dispatched to the appropriate backend based on the subcommand used.
+The primary executable is `relx-go`. Commands are dispatched to the appropriate backend based on the subcommand used.
 
 ### 1. Check Pull Request Status (Gitea Backend)
 
@@ -115,7 +156,7 @@ Use the `pr` subcommand to list open pull requests for a given owner and reposit
 | `repo`   | The repository name.         |
 
 ```bash
-./gyr-grxs pr openSUSE osc
+./relx-go pr openSUSE osc
 ```
 
 **Example Output:**
@@ -136,7 +177,7 @@ Use the `status` subcommand to check the build status for a specific package in 
 | `package` | The package name.     |
 
 ```bash
-./gyr-grxs status openSUSE:Factory osc
+./relx-go status openSUSE:Factory osc
 ```
 
 **Example Output:**

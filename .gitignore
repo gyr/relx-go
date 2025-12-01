@@ -18,4 +18,4 @@
 go.work
 
 # Build output
-/gyr-grxs
+/relx-go
