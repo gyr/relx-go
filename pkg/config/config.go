@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -18,13 +17,13 @@ type Config struct {
 	CacheDir string `yaml:"cache_dir"`
 	RepoURL  string `yaml:"repo_url"`
 	RepoName string
-	Branch   string `yaml:"branch"`
+	Branch   string          `yaml:"branch"`
 	Logger   *logging.Logger `yaml:"-"` // Ignore logger for YAML (it's not a config value)
 }
 
 // LoadConfig loads the configuration from a YAML file.
 func LoadConfig(configPath string) (*Config, error) {
-	data, err := ioutil.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
@@ -32,6 +31,15 @@ func LoadConfig(configPath string) (*Config, error) {
 	cfg := &Config{}
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal YAML config: %w", err)
+	}
+
+	// Set default CacheDir if not provided in config file
+	if cfg.CacheDir == "" {
+		currentUser, err := user.Current()
+		if err != nil {
+			return nil, fmt.Errorf("config: could not get current user: %w", err)
+		}
+		cfg.CacheDir = filepath.Join(currentUser.HomeDir, ".cache", "relx-go")
 	}
 
 	// Derive RepoName from RepoURL if available
@@ -82,4 +90,3 @@ func FindConfigFile(cliConfigPath string) (string, error) {
 
 	return "", fmt.Errorf("no configuration file found")
 }
-
