@@ -83,7 +83,15 @@ To ensure code quality and consistency, the following commands are used:
 *   **Build:** `go build ./...`
 *   **Linting:** `golangci-lint run`
 
-A single binary named `relx-go` will be created in your current directory.
+### Troubleshooting Build Issues
+
+If you encounter unexpected build errors, particularly related to dependency resolution or stale module information (e.g., "MissingFieldOrMethod" warnings after updating code), it's often helpful to clear your Go module cache.
+
+```bash
+go clean -modcache
+```
+
+This command removes the entire Go module cache, forcing Go to re-download all dependencies on the next build. This ensures that you are working with the freshest versions of your modules, as specified in your `go.mod` file.
 
 ## ✅ Testing
 
