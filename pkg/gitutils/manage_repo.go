@@ -53,7 +53,7 @@ func deriveRepoName(repoURL string) (string, error) {
 
 // CloneRepo clones a Git repository into a specified cache directory.
 // It skips submodules and returns the local path to the cloned repository.
-func CloneRepo(cfg *config.Config) (string, error) {
+func ManageRepo(cfg *config.Config) (string, error) {
 	if cfg.RepoURL == "" {
 		return "", fmt.Errorf("gitutils: repository URL (RepoURL) cannot be empty in the configuration")
 	}

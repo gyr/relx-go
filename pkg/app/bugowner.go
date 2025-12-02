@@ -16,7 +16,7 @@ func HandleBugownerByPackage(cfg *config.Config, pkg string) {
 	fmt.Printf("Fetching bug owners for package: %s\n", pkg)
 
 	// Clone or update the repository
-	localPath, err := gitutils.CloneRepo(cfg)
+	localPath, err := gitutils.ManageRepo(cfg)
 	if err != nil {
 		cfg.Logger.Fatalf("Error cloning/updating repository: %v", err)
 	}

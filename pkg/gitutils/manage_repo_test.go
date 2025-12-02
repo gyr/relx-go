@@ -19,7 +19,7 @@ func createDummyGitRepo(t *testing.T, path string) {
 	}
 }
 
-func TestCloneRepo(t *testing.T) {
+func TestManageRepo(t *testing.T) {
 	originalExecCommand := execCommand // Save original
 	defer func() {
 		execCommand = originalExecCommand // Restore original
@@ -56,7 +56,7 @@ func TestCloneRepo(t *testing.T) {
 			return nil, errors.New("unexpected exec command in initial clone: " + name + " " + strings.Join(args, " "))
 		}
 
-		path, err := CloneRepo(mockCfg)
+		path, err := ManageRepo(mockCfg)
 		if err != nil {
 			t.Fatalf("Initial clone failed: %v", err)
 		}
@@ -97,7 +97,7 @@ func TestCloneRepo(t *testing.T) {
 			return nil, errors.New("unexpected exec command in update: " + name + " " + strings.Join(args, " "))
 		}
 
-		path, err := CloneRepo(mockCfg)
+		path, err := ManageRepo(mockCfg)
 		if err != nil {
 			t.Fatalf("Update existing repo failed: %v", err)
 		}
@@ -129,7 +129,7 @@ func TestCloneRepo(t *testing.T) {
 			return nil, errors.New("unexpected exec command in clone failure: " + name + " " + strings.Join(args, " "))
 		}
 
-		_, err := CloneRepo(mockCfg)
+		_, err := ManageRepo(mockCfg)
 		if err == nil {
 			t.Fatal("Expected error during clone failure, got nil")
 		}
@@ -157,7 +157,7 @@ func TestCloneRepo(t *testing.T) {
 			return nil, errors.New("unexpected exec command in fetch failure: " + name + " " + strings.Join(args, " "))
 		}
 
-		_, err := CloneRepo(mockCfg)
+		_, err := ManageRepo(mockCfg)
 		if err == nil {
 			t.Fatal("Expected error during fetch failure, got nil")
 		}
@@ -184,7 +184,7 @@ func TestCloneRepo(t *testing.T) {
 			return nil, errors.New("unexpected exec command in pull failure: " + name + " " + strings.Join(args, " "))
 		}
 
-		_, err := CloneRepo(mockCfg)
+		_, err := ManageRepo(mockCfg)
 		if err == nil {
 			t.Fatal("Expected error during pull failure, got nil")
 		}
@@ -201,7 +201,7 @@ func TestCloneRepo(t *testing.T) {
 			Logger:     logging.NewLogger(logging.LevelDebug),
 		}
 
-		_, err := CloneRepo(cfg)
+		_, err := ManageRepo(cfg)
 		if err == nil {
 			t.Fatal("Expected an error for missing RepoURL, but got nil")
 		}
@@ -219,7 +219,7 @@ func TestCloneRepo(t *testing.T) {
 			Logger:     logging.NewLogger(logging.LevelDebug),
 		}
 
-		_, err := CloneRepo(cfg)
+		_, err := ManageRepo(cfg)
 		if err == nil {
 			t.Fatal("Expected an error for missing RepoBranch, but got nil")
 		}
@@ -237,7 +237,7 @@ func TestCloneRepo(t *testing.T) {
 			Logger:     logging.NewLogger(logging.LevelDebug),
 		}
 
-		_, err := CloneRepo(cfg)
+		_, err := ManageRepo(cfg)
 		if err == nil {
 			t.Fatal("Expected an error for invalid RepoURL, but got nil")
 		}
@@ -246,4 +246,38 @@ func TestCloneRepo(t *testing.T) {
 			t.Errorf("Error message missing expected substring %q: %v", expectedErrorMsg, err)
 		}
 	})
+}
+
+func TestDeriveRepoName(t *testing.T) {
+	testCases := []struct {
+		name     string
+		repoURL  string
+		expected string
+		err      bool
+	}{
+		{"Standard HTTPS", "https://example.com/user/repo.git", "repo", false},
+		{"HTTPS without .git", "https://example.com/user/repo", "repo", false},
+		{"Standard SSH", "git@example.com:user/repo.git", "repo", false},
+		{"SSH without .git", "git@example.com:user/repo", "repo", false},
+		{"Generic SSH", "gitea@example.com:user/another-repo.git", "another-repo", false},
+		{"GitLab SSH with slash path", "gitlab@my-instance.com/user/repo.git", "repo", false},
+		{"No name", "https://example.com/", "", true},
+		{"Invalid URL", "https://", "", true},
+		{"Empty URL", "", "", true},
+		{"Just .git", ".git", "", true},
+		{"Just a dot", ".", "", true},
+		{"Colon only", ":", "", true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			repoName, err := deriveRepoName(tc.repoURL)
+			if (err != nil) != tc.err {
+				t.Fatalf("Expected error: %v, got: %v", tc.err, err)
+			}
+			if repoName != tc.expected {
+				t.Errorf("Expected repo name: %q, got: %q", tc.expected, repoName)
+			}
+		})
+	}
 }
