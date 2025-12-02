@@ -127,9 +127,13 @@ func main() {
 		}
 
 		if *pkgFlag != "" {
-			app.HandleBugownerByPackage(cfg, *pkgFlag)
+			if err := app.HandleBugownerByPackage(cfg, *pkgFlag); err != nil {
+				logger.Fatalf("Error handling bugowner by package: %v", err)
+			}
 		} else { // *maintainerFlag != ""
-			app.HandlePackagesByMaintainer(cfg, *maintainerFlag)
+			if err := app.HandlePackagesByMaintainer(cfg, *maintainerFlag); err != nil {
+				logger.Fatalf("Error handling packages by maintainer: %v", err)
+			}
 		}
 	default:
 		fmt.Printf("Unknown command: %s. Possible commands are:\n", command)

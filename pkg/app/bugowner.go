@@ -10,36 +10,73 @@ import (
 	"github.com/gyr/relx-go/pkg/gitutils"
 )
 
-// HandleBugownerByPackage fetches and displays the bug owners for a given package.
-func HandleBugownerByPackage(cfg *config.Config, pkg string) {
-	cfg.Logger.Infof("Handling bug owner request for package %s", pkg)
-	fmt.Printf("Fetching bug owners for package: %s\n", pkg)
+var ManageRepo = gitutils.ManageRepo
 
+// prepareMaintainershipData ensures the repository is cloned/updated and loads the maintainership data from it.
+func prepareMaintainershipData(cfg *config.Config) (map[string][]string, error) {
 	// Clone or update the repository
-	localPath, err := gitutils.ManageRepo(cfg)
+	localPath, err := ManageRepo(cfg)
 	if err != nil {
-		cfg.Logger.Fatalf("Error cloning/updating repository: %v", err)
+		return nil, fmt.Errorf("error cloning/updating repository: %w", err)
 	}
 	cfg.Logger.Infof("Repository available at: %s", localPath)
 
 	maintainers, err := loadMaintainershipData(localPath)
 	if err != nil {
-		cfg.Logger.Fatalf("Error loading maintainership data: %v", err)
+		return nil, fmt.Errorf("error loading maintainership data: %w", err)
 	}
 
-	cfg.Logger.Debugf("Loaded maintainership data: %+v", maintainers)
+	return maintainers, nil
+}
 
-	// TODO: Use the maintainers map to find bug owners for the package.
-	// For now, we'll just print a placeholder message.
+// HandleBugownerByPackage fetches and displays the bug owners for a given package.
+func HandleBugownerByPackage(cfg *config.Config, pkg string) error {
+	cfg.Logger.Infof("Handling bug owner request for package %s", pkg)
+
+	maintainers, err := prepareMaintainershipData(cfg)
+	if err != nil {
+		return err
+	}
+
+	if pkgMaintainers, found := maintainers[pkg]; found {
+		fmt.Printf("Maintainers for package %s:\n", pkg)
+		for _, m := range pkgMaintainers {
+			fmt.Printf("  - %s\n", m)
+		}
+	} else {
+		fmt.Printf("Package '%s' not found in maintainership data.\n", pkg)
+	}
+	return nil
 }
 
 // HandlePackagesByMaintainer lists the packages maintained by a given user.
-func HandlePackagesByMaintainer(cfg *config.Config, maintainer string) {
-	// TODO: Implement the logic to fetch packages for the maintainer.
-	// This will likely involve interacting with a system that maps maintainers to packages.
-	// For now, we'll just print a placeholder message.
-	fmt.Printf("Listing packages for maintainer: %s\n", maintainer)
+func HandlePackagesByMaintainer(cfg *config.Config, maintainer string) error {
 	cfg.Logger.Infof("Handling packages by maintainer request for %s", maintainer)
+
+	maintainers, err := prepareMaintainershipData(cfg)
+	if err != nil {
+		return err
+	}
+
+	var foundPackages []string
+	for pkg, maintainerList := range maintainers {
+		for _, m := range maintainerList {
+			if m == maintainer {
+				foundPackages = append(foundPackages, pkg)
+				break // Move to the next package once a match is found
+			}
+		}
+	}
+
+	if len(foundPackages) > 0 {
+		fmt.Printf("Packages maintained by %s:\n", maintainer)
+		for _, pkg := range foundPackages {
+			fmt.Printf("  - %s\n", pkg)
+		}
+	} else {
+		fmt.Printf("No packages found for maintainer '%s'.\n", maintainer)
+	}
+	return nil
 }
 
 // loadMaintainershipData reads and unmarshals the _maintainership.json file.
