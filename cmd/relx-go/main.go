@@ -74,7 +74,9 @@ func main() {
 		if len(commandArgs) < 2 {
 			logger.Fatal("Error: 'pr' requires owner and repo arguments.")
 		}
-		app.HandlePullRequest(cfg, commandArgs[0], commandArgs[1])
+		if err := app.HandlePullRequest(cfg, commandArgs[0], commandArgs[1]); err != nil {
+			logger.Fatalf("Error handling pull request: %v", err)
+		}
 
 	case "status":
 		statusCmd := flag.NewFlagSet("status", flag.ContinueOnError)
@@ -100,7 +102,9 @@ func main() {
 			statusCmd.Usage()
 			os.Exit(1)
 		}
-		app.HandleBuildStatus(cfg, *projectFlag, statusCmd.Arg(0))
+		if err := app.HandleBuildStatus(cfg, *projectFlag, statusCmd.Arg(0)); err != nil {
+			logger.Fatalf("Error handling build status: %v", err)
+		}
 
 	case "bugowner":
 		bugownerCmd := flag.NewFlagSet("bugowner", flag.ContinueOnError)
