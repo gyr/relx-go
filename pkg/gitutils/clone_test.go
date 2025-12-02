@@ -29,17 +29,23 @@ func TestCloneRepo(t *testing.T) {
 	tempCacheDir := t.TempDir()
 
 	mockCfg := &config.Config{
-		RepoURL:  "https://example.com/test.git",
-		RepoName: "test-repo",
-		CacheDir: tempCacheDir,
-		Logger:   logging.NewLogger(logging.LevelDebug),
+		RepoURL:    "https://example.com/test.git",
+		RepoBranch: "main",
+		CacheDir:   tempCacheDir,
+		Logger:     logging.NewLogger(logging.LevelDebug),
 	}
-	expectedRepoPath := filepath.Join(tempCacheDir, mockCfg.RepoName)
+	expectedRepoPath := filepath.Join(tempCacheDir, "test")
 
 	t.Run("InitialClone", func(t *testing.T) {
 		// Mock execCommand for initial clone
-		execCommand = func(name string, args ...string) ([]byte, error) {
+		execCommand = func(dir, name string, args ...string) ([]byte, error) {
 			if name == "git" && len(args) > 0 && args[0] == "clone" {
+				if dir != "" {
+					t.Errorf("Expected empty dir for clone, got %s", dir)
+				}
+				if args[1] != "--branch" || args[2] != "main" {
+					t.Errorf("git clone branch mismatch: got args %v", args)
+				}
 				if args[len(args)-1] != expectedRepoPath {
 					t.Errorf("git clone path mismatch: got %s, want %s", args[len(args)-1], expectedRepoPath)
 				}
@@ -65,10 +71,20 @@ func TestCloneRepo(t *testing.T) {
 			createDummyGitRepo(t, expectedRepoPath)
 		}
 
-		// Mock execCommand for update (fetch and pull)
-		var fetchCalled, pullCalled bool
-		execCommand = func(name string, args ...string) ([]byte, error) {
+		// Mock execCommand for update (switch, fetch and pull)
+		var switchCalled, fetchCalled, pullCalled bool
+		execCommand = func(dir, name string, args ...string) ([]byte, error) {
+			if dir != expectedRepoPath {
+				t.Errorf("Expected dir %s, got %s", expectedRepoPath, dir)
+			}
 			if name == "git" {
+				if len(args) > 0 && args[0] == "switch" {
+					if args[1] != "main" {
+						t.Errorf("git switch branch mismatch: got %s, want main", args[1])
+					}
+					switchCalled = true
+					return []byte("switch success"), nil // Simulate successful switch
+				}
 				if len(args) > 0 && args[0] == "fetch" {
 					fetchCalled = true
 					return []byte("fetch success"), nil // Simulate successful fetch
@@ -88,6 +104,9 @@ func TestCloneRepo(t *testing.T) {
 		if path != expectedRepoPath {
 			t.Errorf("Update returned wrong path: got %s, want %s", path, expectedRepoPath)
 		}
+		if !switchCalled {
+			t.Error("git switch was not called during update")
+		}
 		if !fetchCalled {
 			t.Error("git fetch was not called during update")
 		}
@@ -103,7 +122,7 @@ func TestCloneRepo(t *testing.T) {
 		}
 
 		mockError := errors.New("mock git clone failure")
-		execCommand = func(name string, args ...string) ([]byte, error) {
+		execCommand = func(dir, name string, args ...string) ([]byte, error) {
 			if name == "git" && len(args) > 0 && args[0] == "clone" {
 				return []byte("clone failed output"), mockError
 			}
@@ -124,7 +143,10 @@ func TestCloneRepo(t *testing.T) {
 		createDummyGitRepo(t, expectedRepoPath)
 
 		mockError := errors.New("mock git fetch failure")
-		execCommand = func(name string, args ...string) ([]byte, error) {
+		execCommand = func(dir, name string, args ...string) ([]byte, error) {
+			if name == "git" && len(args) > 0 && args[0] == "switch" {
+				return []byte("switch success"), nil // Simulate successful switch
+			}
 			if name == "git" && len(args) > 0 && args[0] == "fetch" {
 				return []byte("fetch failed output"), mockError
 			}
@@ -149,7 +171,10 @@ func TestCloneRepo(t *testing.T) {
 		createDummyGitRepo(t, expectedRepoPath)
 
 		mockError := errors.New("mock git pull failure")
-		execCommand = func(name string, args ...string) ([]byte, error) {
+		execCommand = func(dir, name string, args ...string) ([]byte, error) {
+			if name == "git" && len(args) > 0 && args[0] == "switch" {
+				return []byte("switch success"), nil // Simulate successful switch
+			}
 			if name == "git" && len(args) > 0 && args[0] == "fetch" {
 				return []byte("fetch success"), nil
 			}
@@ -165,6 +190,60 @@ func TestCloneRepo(t *testing.T) {
 		}
 		if !strings.Contains(err.Error(), mockError.Error()) {
 			t.Errorf("Error message missing expected substring %q: %v", mockError.Error(), err)
+		}
+	})
+
+	t.Run("RepoURLMissing", func(t *testing.T) {
+		cfg := &config.Config{
+			RepoURL:    "", // Empty RepoURL
+			RepoBranch: "main",
+			CacheDir:   tempCacheDir,
+			Logger:     logging.NewLogger(logging.LevelDebug),
+		}
+
+		_, err := CloneRepo(cfg)
+		if err == nil {
+			t.Fatal("Expected an error for missing RepoURL, but got nil")
+		}
+		expectedErrorMsg := "gitutils: repository URL (RepoURL) cannot be empty in the configuration"
+		if !strings.Contains(err.Error(), expectedErrorMsg) {
+			t.Errorf("Error message missing expected substring %q: %v", expectedErrorMsg, err)
+		}
+	})
+
+	t.Run("RepoBranchMissing", func(t *testing.T) {
+		cfg := &config.Config{
+			RepoURL:    "https://example.com/test.git",
+			RepoBranch: "", // Empty RepoBranch
+			CacheDir:   tempCacheDir,
+			Logger:     logging.NewLogger(logging.LevelDebug),
+		}
+
+		_, err := CloneRepo(cfg)
+		if err == nil {
+			t.Fatal("Expected an error for missing RepoBranch, but got nil")
+		}
+		expectedErrorMsg := "gitutils: repository branch (RepoBranch) cannot be empty in the configuration"
+		if !strings.Contains(err.Error(), expectedErrorMsg) {
+			t.Errorf("Error message missing expected substring %q: %v", expectedErrorMsg, err)
+		}
+	})
+
+	t.Run("InvalidRepoURL", func(t *testing.T) {
+		cfg := &config.Config{
+			RepoURL:    "https://", // Invalid URL that results in empty repo name
+			RepoBranch: "main",
+			CacheDir:   tempCacheDir,
+			Logger:     logging.NewLogger(logging.LevelDebug),
+		}
+
+		_, err := CloneRepo(cfg)
+		if err == nil {
+			t.Fatal("Expected an error for invalid RepoURL, but got nil")
+		}
+		expectedErrorMsg := "gitutils: could not derive a valid repository name from URL"
+		if !strings.Contains(err.Error(), expectedErrorMsg) {
+			t.Errorf("Error message missing expected substring %q: %v", expectedErrorMsg, err)
 		}
 	})
 }

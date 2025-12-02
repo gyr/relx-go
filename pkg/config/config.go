@@ -14,11 +14,10 @@ import (
 
 // Config holds the application's configuration.
 type Config struct {
-	CacheDir string `yaml:"cache_dir"`
-	RepoURL  string `yaml:"repo_url"`
-	RepoName string
-	Branch   string          `yaml:"branch"`
-	Logger   *logging.Logger `yaml:"-"` // Ignore logger for YAML (it's not a config value)
+	CacheDir   string          `yaml:"cache_dir"`
+	RepoURL    string          `yaml:"repo_url"`
+	RepoBranch string          `yaml:"repo_branch"`
+	Logger     *logging.Logger `yaml:"-"` // Ignore logger for YAML (it's not a config value)
 }
 
 // LoadConfig loads the configuration from a YAML file.
@@ -42,15 +41,13 @@ func LoadConfig(configPath string) (*Config, error) {
 		cfg.CacheDir = filepath.Join(currentUser.HomeDir, ".cache", "relx-go")
 	}
 
-	// Derive RepoName from RepoURL if available
-	if cfg.RepoURL != "" {
-		// Remove "gitea @" prefix if present
-		repoURLClean := strings.TrimPrefix(cfg.RepoURL, "gitea@")
-
-		// Get the base name (last component) of the URL path
-		base := filepath.Base(repoURLClean)
-		// Remove the ".git" suffix if it exists
-		cfg.RepoName = strings.TrimSuffix(base, ".git")
+	// Expand tilde in CacheDir path
+	if strings.HasPrefix(cfg.CacheDir, "~") {
+		currentUser, err := user.Current()
+		if err != nil {
+			return nil, fmt.Errorf("config: could not get current user to expand tilde in cache_dir: %w", err)
+		}
+		cfg.CacheDir = filepath.Join(currentUser.HomeDir, cfg.CacheDir[1:])
 	}
 
 	return cfg, nil
