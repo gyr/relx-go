@@ -1,0 +1,2 @@
+cache_dir: "~/.cache/relx-go" # Customize the directory for cloning repositories
+debug: true # Set to true to enable verbose debug logging

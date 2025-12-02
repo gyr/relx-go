@@ -112,7 +112,7 @@ The following commands are recommended for a CI/CD pipeline to validate the code
 
 ## ⚙️ Configuration
 
-relx-go supports loading configuration from a Lua file. This allows you to customize settings such as the cache directory used for cloning Git repositories and enable debug logging.
+relx-go supports loading configuration from a YAML file. This allows you to customize settings such as the cache directory used for cloning Git repositories and enable debug logging.
 
 ### Configuration File Search Order
 
@@ -120,19 +120,16 @@ relx-go searches for a configuration file in the following order, using the firs
 
 1.  **Command-line flag:** Specified using `--config <path>` or `-c <path>`.
 2.  **Environment variable:** The path specified in the `RELX_GO_CONFIG_FILE` environment variable.
-3.  **User-specific path:** `~/.config/relx-go/config.lua`
-4.  **System-wide path:** `/etc/relx-go/config.lua`
+3.  **User-specific path:** `~/.config/relx-go/config.yaml`
+4.  **System-wide path:** `/etc/relx-go/config.yaml`
 
 If no configuration file is found, relx-go will proceed with default settings.
 
-### Example `config.lua`
+### Example `config.yaml`
 
-```lua
-local config = {
-    cache_dir = "/path/to/your/custom/cache", -- Customize the directory for cloning repositories
-    debug = true, -- Set to true to enable verbose debug logging
-}
-return config
+```yaml
+cache_dir: "/path/to/your/custom/cache" # Customize the directory for cloning repositories
+debug: true # Set to true to enable verbose debug logging
 ```
 
 ### Command-line Flags
