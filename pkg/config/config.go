@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -14,10 +15,11 @@ import (
 
 // Config holds the application's configuration.
 type Config struct {
-	CacheDir   string          `yaml:"cache_dir"`
-	RepoURL    string          `yaml:"repo_url"`
-	RepoBranch string          `yaml:"repo_branch"`
-	Logger     *logging.Logger `yaml:"-"` // Ignore logger for YAML (it's not a config value)
+	CacheDir     string          `yaml:"cache_dir"`
+	RepoURL      string          `yaml:"repo_url"`
+	RepoBranch   string          `yaml:"repo_branch"`
+	Logger       *logging.Logger `yaml:"-"` // Ignore logger for YAML (it's not a config value)
+	OutputWriter io.Writer       `yaml:"-"` // Ignore output writer for YAML (it's not a config value)
 }
 
 // LoadConfig loads the configuration from a YAML file.

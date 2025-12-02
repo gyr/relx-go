@@ -39,12 +39,18 @@ func HandleBugownerByPackage(cfg *config.Config, pkg string) error {
 	}
 
 	if pkgMaintainers, found := maintainers[pkg]; found {
-		fmt.Printf("Maintainers for package %s:\n", pkg)
+		if _, err := fmt.Fprintf(cfg.OutputWriter, "Maintainers for package %s:\n", pkg); err != nil {
+			return err
+		}
 		for _, m := range pkgMaintainers {
-			fmt.Printf("  - %s\n", m)
+			if _, err := fmt.Fprintf(cfg.OutputWriter, "  - %s\n", m); err != nil {
+				return err
+			}
 		}
 	} else {
-		fmt.Printf("Package '%s' not found in maintainership data.\n", pkg)
+		if _, err := fmt.Fprintf(cfg.OutputWriter, "Package '%s' not found in maintainership data.\n", pkg); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -69,12 +75,18 @@ func HandlePackagesByMaintainer(cfg *config.Config, maintainer string) error {
 	}
 
 	if len(foundPackages) > 0 {
-		fmt.Printf("Packages maintained by %s:\n", maintainer)
+		if _, err := fmt.Fprintf(cfg.OutputWriter, "Packages maintained by %s:\n", maintainer); err != nil {
+			return err
+		}
 		for _, pkg := range foundPackages {
-			fmt.Printf("  - %s\n", pkg)
+			if _, err := fmt.Fprintf(cfg.OutputWriter, "  - %s\n", pkg); err != nil {
+				return err
+			}
 		}
 	} else {
-		fmt.Printf("No packages found for maintainer '%s'.\n", maintainer)
+		if _, err := fmt.Fprintf(cfg.OutputWriter, "No packages found for maintainer '%s'.\n", maintainer); err != nil {
+			return err
+		}
 	}
 	return nil
 }

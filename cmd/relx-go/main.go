@@ -42,12 +42,14 @@ func main() {
 			logger.Fatalf("Error loading configuration from %s: %v", cfgFile, err)
 		}
 		cfg.Logger = logger // Assign the logger to the config
+		cfg.OutputWriter = os.Stdout
 		logger.Debug("Configuration loaded from: ", cfgFile)
 	} else {
 		// Provide a default configuration if no file is found/loaded
 		cfg = &config.Config{
-			CacheDir: "",     // Default to empty, gitutils will use its own default
-			Logger:   logger, // Assign the logger to the default config
+			CacheDir:     "",        // Default to empty, gitutils will use its own default
+			Logger:       logger,    // Assign the logger to the default config
+			OutputWriter: os.Stdout, // Default to os.Stdout for application output
 		}
 	}
 
