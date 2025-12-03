@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -15,7 +13,6 @@ import (
 )
 
 // MockRunner is a mock implementation of the command.Runner for testing.
-// It allows us to simulate the success or failure of external commands.
 type MockRunner struct {
 	RunFunc func(ctx context.Context, workDir, name string, args ...string) ([]byte, error)
 }
@@ -28,48 +25,35 @@ func (m *MockRunner) Run(ctx context.Context, workDir, name string, args ...stri
 	if m.RunFunc != nil {
 		return m.RunFunc(ctx, workDir, name, args...)
 	}
-	// Default behavior: success with no output
+	// Default behavior: success with no output. This can be used for tests that don't care about the output.
 	return nil, nil
 }
 
-// setupTestRepo creates a mock repository structure in a temporary directory
-// and writes a _maintainership.json file with the given content.
-func setupTestRepo(t *testing.T, cacheDir, repoName, content string) {
-	t.Helper()
-	repoPath := filepath.Join(cacheDir, repoName)
-	if err := os.MkdirAll(repoPath, 0755); err != nil {
-		t.Fatalf("Failed to create mock repo dir: %v", err)
-	}
-	// Also create a .git dir to satisfy the `cache.Has` check in ManageRepo
-	if err := os.MkdirAll(filepath.Join(repoPath, ".git"), 0755); err != nil {
-		t.Fatalf("Failed to create mock .git dir: %v", err)
-	}
-	err := os.WriteFile(filepath.Join(repoPath, "_maintainership.json"), []byte(content), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create mock maintainership file: %v", err)
-	}
-}
-
 func TestHandleBugownerByPackage(t *testing.T) {
-	const repoURL = "https://example.com/test/repo.git" // Gives repo name "repo"
-	const repoName = "repo"
-	maintainershipContent := `{"pkg1": ["userA", "userB"], "pkg2": ["userC"]}`
+	const repoURL = "https://example.com/test/repo.git"
+	const maintainershipContent = `{"pkg1": ["userA", "userB"], "pkg2": ["userC"]}`
+
+	// This is the mock for a successful git archive call.
+	successfulRunner := &MockRunner{
+		RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
+			// Check if the command is what we expect
+			if name == "bash" && strings.Contains(args[1], "git archive") {
+				return []byte(maintainershipContent), nil
+			}
+			return nil, nil
+		},
+	}
 
 	t.Run("PackageFound", func(t *testing.T) {
-		tempDir := t.TempDir()
-		setupTestRepo(t, tempDir, repoName, maintainershipContent)
-
 		var out bytes.Buffer
 		cfg := &config.Config{
 			Logger:       logging.NewLogger(logging.LevelDebug),
 			OutputWriter: &out,
-			CacheDir:     tempDir,
 			RepoURL:      repoURL,
 			RepoBranch:   "main",
 		}
-		mockRunner := &MockRunner{} // Default mock simulates success
 
-		err := HandleBugownerByPackage(context.Background(), cfg, mockRunner, "pkg1")
+		err := HandleBugownerByPackage(context.Background(), cfg, successfulRunner, "pkg1")
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}
@@ -84,20 +68,15 @@ func TestHandleBugownerByPackage(t *testing.T) {
 	})
 
 	t.Run("PackageNotFound", func(t *testing.T) {
-		tempDir := t.TempDir()
-		setupTestRepo(t, tempDir, repoName, maintainershipContent)
-
 		var out bytes.Buffer
 		cfg := &config.Config{
 			Logger:       logging.NewLogger(logging.LevelDebug),
 			OutputWriter: &out,
-			CacheDir:     tempDir,
 			RepoURL:      repoURL,
 			RepoBranch:   "main",
 		}
-		mockRunner := &MockRunner{}
 
-		err := HandleBugownerByPackage(context.Background(), cfg, mockRunner, "nonexistent")
+		err := HandleBugownerByPackage(context.Background(), cfg, successfulRunner, "nonexistent")
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}
@@ -109,29 +88,26 @@ func TestHandleBugownerByPackage(t *testing.T) {
 		}
 	})
 
-	t.Run("ManageRepoFailure", func(t *testing.T) {
-		tempDir := t.TempDir()
+	t.Run("FetchFileFailure", func(t *testing.T) {
 		var out bytes.Buffer
 		cfg := &config.Config{
 			Logger:       logging.NewLogger(logging.LevelDebug),
 			OutputWriter: &out,
-			CacheDir:     tempDir,
 			RepoURL:      repoURL,
 			RepoBranch:   "main",
 		}
 
-		mockError := errors.New("git failed")
-		mockRunner := &MockRunner{
+		mockError := errors.New("git archive failed")
+		failedRunner := &MockRunner{
 			RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
 				return nil, mockError
 			},
 		}
 
-		err := HandleBugownerByPackage(context.Background(), cfg, mockRunner, "pkg1")
+		err := HandleBugownerByPackage(context.Background(), cfg, failedRunner, "pkg1")
 		if err == nil {
 			t.Fatal("Expected an error, but got nil")
 		}
-		// The error is now wrapped, so we check for our specific error message
 		if !strings.Contains(err.Error(), mockError.Error()) {
 			t.Errorf("Error message missing expected substring %q: %v", mockError.Error(), err)
 		}
@@ -140,24 +116,27 @@ func TestHandleBugownerByPackage(t *testing.T) {
 
 func TestHandlePackagesByMaintainer(t *testing.T) {
 	const repoURL = "https://example.com/test/repo.git"
-	const repoName = "repo"
-	maintainershipContent := `{"pkg1": ["userA", "userB"], "pkg2": ["userC"], "pkg3": ["userA"]}`
+	const maintainershipContent = `{"pkg1": ["userA", "userB"], "pkg2": ["userC"], "pkg3": ["userA"]}`
+
+	successfulRunner := &MockRunner{
+		RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
+			if name == "bash" && strings.Contains(args[1], "git archive") {
+				return []byte(maintainershipContent), nil
+			}
+			return nil, nil
+		},
+	}
 
 	t.Run("MaintainerFound", func(t *testing.T) {
-		tempDir := t.TempDir()
-		setupTestRepo(t, tempDir, repoName, maintainershipContent)
-
 		var out bytes.Buffer
 		cfg := &config.Config{
 			Logger:       logging.NewLogger(logging.LevelDebug),
 			OutputWriter: &out,
-			CacheDir:     tempDir,
 			RepoURL:      repoURL,
 			RepoBranch:   "main",
 		}
-		mockRunner := &MockRunner{}
 
-		err := HandlePackagesByMaintainer(context.Background(), cfg, mockRunner, "userA")
+		err := HandlePackagesByMaintainer(context.Background(), cfg, successfulRunner, "userA")
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}
@@ -172,20 +151,15 @@ func TestHandlePackagesByMaintainer(t *testing.T) {
 	})
 
 	t.Run("MaintainerNotFound", func(t *testing.T) {
-		tempDir := t.TempDir()
-		setupTestRepo(t, tempDir, repoName, maintainershipContent)
-
 		var out bytes.Buffer
 		cfg := &config.Config{
 			Logger:       logging.NewLogger(logging.LevelDebug),
 			OutputWriter: &out,
-			CacheDir:     tempDir,
 			RepoURL:      repoURL,
 			RepoBranch:   "main",
 		}
-		mockRunner := &MockRunner{}
 
-		err := HandlePackagesByMaintainer(context.Background(), cfg, mockRunner, "nonexistent")
+		err := HandlePackagesByMaintainer(context.Background(), cfg, successfulRunner, "nonexistent")
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}
@@ -197,51 +171,24 @@ func TestHandlePackagesByMaintainer(t *testing.T) {
 		}
 	})
 
-	t.Run("MaintainershipFileMissing", func(t *testing.T) {
-		tempDir := t.TempDir() // An empty temp dir
+	t.Run("JSONMalformed", func(t *testing.T) {
 		var out bytes.Buffer
 		cfg := &config.Config{
 			Logger:       logging.NewLogger(logging.LevelDebug),
 			OutputWriter: &out,
-			CacheDir:     tempDir,
 			RepoURL:      repoURL,
 			RepoBranch:   "main",
 		}
-		// We still need to create the repo dir for ManageRepo to succeed
-		if err := os.MkdirAll(filepath.Join(tempDir, repoName), 0755); err != nil {
-			t.Fatalf("Failed to create mock repo dir: %v", err)
+
+		malformedRunner := &MockRunner{
+			RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
+				return []byte("this is not json"), nil
+			},
 		}
 
-		mockRunner := &MockRunner{}
-
-		err := HandlePackagesByMaintainer(context.Background(), cfg, mockRunner, "userA")
+		err := HandlePackagesByMaintainer(context.Background(), cfg, malformedRunner, "userA")
 		if err == nil {
-			t.Fatal("Expected an error for missing maintainership file, got nil")
-		}
-		// This error comes from `loadMaintainershipData`, which is what we want to test
-		expectedErrSubstring := "error reading maintainership file"
-		if !strings.Contains(err.Error(), expectedErrSubstring) {
-			t.Errorf("Expected error message to contain %q, but got %v", expectedErrSubstring, err)
-		}
-	})
-
-	t.Run("MaintainershipFileMalformed", func(t *testing.T) {
-		tempDir := t.TempDir()
-		setupTestRepo(t, tempDir, repoName, "this is not json")
-
-		var out bytes.Buffer
-		cfg := &config.Config{
-			Logger:       logging.NewLogger(logging.LevelDebug),
-			OutputWriter: &out,
-			CacheDir:     tempDir,
-			RepoURL:      repoURL,
-			RepoBranch:   "main",
-		}
-		mockRunner := &MockRunner{}
-
-		err := HandlePackagesByMaintainer(context.Background(), cfg, mockRunner, "userA")
-		if err == nil {
-			t.Fatal("Expected an error for malformed maintainership file, got nil")
+			t.Fatal("Expected an error for malformed JSON, got nil")
 		}
 		expectedErrSubstring := "error unmarshaling maintainership JSON"
 		if !strings.Contains(err.Error(), expectedErrSubstring) {

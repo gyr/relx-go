@@ -4,30 +4,28 @@ import (
 	"context" // Import context for cancellation and timeouts
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/gyr/relx-go/pkg/command" // Import the new command runner interface
 	"github.com/gyr/relx-go/pkg/config"
 	"github.com/gyr/relx-go/pkg/gitutils"
 )
 
-// prepareMaintainershipData ensures the repository is cloned/updated and loads the maintainership data from it.
-// It now accepts a context and a command.Runner, making it more testable and enabling
-// proper cancellation/timeout propagation.
-// This is an example of Dependency Injection: the 'runner' dependency is passed in,
-// rather than being created internally, improving modularity and testability.
+// prepareMaintainershipData fetches the _maintainership.json file from the remote git
+// repository and unmarshals it. It uses the efficient 'git archive' method
+// to avoid cloning the entire repository.
 func prepareMaintainershipData(ctx context.Context, cfg *config.Config, runner command.Runner) (map[string][]string, error) {
-	// Clone or update the repository using the injected runner.
-	localPath, err := gitutils.ManageRepo(ctx, cfg, runner)
-	if err != nil {
-		return nil, fmt.Errorf("error cloning/updating repository: %w", err)
-	}
-	cfg.Logger.Infof("Repository available at: %s", localPath)
+	const maintainershipFilename = "_maintainership.json"
 
-	maintainers, err := loadMaintainershipData(localPath)
+	// Fetch the remote file content using the new, efficient git archive method.
+	fileContent, err := gitutils.FetchRemoteFile(ctx, cfg, runner, maintainershipFilename)
 	if err != nil {
-		return nil, fmt.Errorf("error loading maintainership data: %w", err)
+		return nil, fmt.Errorf("error fetching maintainership data: %w", err)
+	}
+
+	// Unmarshal the JSON data directly.
+	var maintainers map[string][]string
+	if err := json.Unmarshal(fileContent, &maintainers); err != nil {
+		return nil, fmt.Errorf("error unmarshaling maintainership JSON: %w", err)
 	}
 
 	return maintainers, nil
@@ -97,22 +95,4 @@ func HandlePackagesByMaintainer(ctx context.Context, cfg *config.Config, runner 
 		}
 	}
 	return nil
-}
-
-// loadMaintainershipData reads and unmarshals the _maintainership.json file.
-func loadMaintainershipData(localPath string) (map[string][]string, error) {
-	maintainershipFilename := "_maintainership.json"
-	maintainershipFile := filepath.Join(localPath, maintainershipFilename)
-
-	data, err := os.ReadFile(maintainershipFile)
-	if err != nil {
-		return nil, fmt.Errorf("error reading maintainership file %s: %w", maintainershipFile, err)
-	}
-
-	var maintainers map[string][]string
-	if err := json.Unmarshal(data, &maintainers); err != nil {
-		return nil, fmt.Errorf("error unmarshaling maintainership JSON from %s: %w", maintainershipFile, err)
-	}
-
-	return maintainers, nil
 }

@@ -9,26 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gyr/relx-go/pkg/command"
 	"github.com/gyr/relx-go/pkg/config"
 	"github.com/gyr/relx-go/pkg/logging"
 )
-
-// MockRunner is a mock implementation of the command.Runner for testing.
-type MockRunner struct {
-	RunFunc func(ctx context.Context, workDir, name string, args ...string) ([]byte, error)
-}
-
-// This line is a compile-time check to ensure MockRunner implements command.Runner.
-var _ command.Runner = (*MockRunner)(nil)
-
-// Run executes the mock command.
-func (m *MockRunner) Run(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
-	if m.RunFunc != nil {
-		return m.RunFunc(ctx, workDir, name, args...)
-	}
-	return nil, fmt.Errorf("RunFunc not defined for mock runner")
-}
 
 // Helper to create a dummy .git directory to simulate an existing repo
 func createDummyGitRepo(t *testing.T, path string) {
