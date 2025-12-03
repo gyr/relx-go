@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context" // Import context for cancellation and timeouts
 	"flag"
 	"fmt"
 	"os"
 
 	"github.com/gyr/relx-go/pkg/app"
+	"github.com/gyr/relx-go/pkg/command" // Import the new command runner
 	"github.com/gyr/relx-go/pkg/config"
 	"github.com/gyr/relx-go/pkg/logging"
 )
@@ -50,8 +52,15 @@ func main() {
 			CacheDir:     "",        // Default to empty, gitutils will use its own default
 			Logger:       logger,    // Assign the logger to the default config
 			OutputWriter: os.Stdout, // Default to os.Stdout for application output
+			// OperationTimeoutSeconds will be set to default 300 in config.LoadConfig if not specified
 		}
 	}
+
+	// Initialize the default command runner and the root context for the application.
+	// The runner is passed down to functions that need to execute external commands,
+	// enabling dependency injection for easier testing.
+	defaultRunner := &command.DefaultRunner{}
+	ctx := context.Background() // Use context.Background() as the root context
 
 	args := flag.Args() // Get non-flag arguments after flag.Parse()
 
@@ -133,11 +142,13 @@ func main() {
 		}
 
 		if *pkgFlag != "" {
-			if err := app.HandleBugownerByPackage(cfg, *pkgFlag); err != nil {
+			// Updated call to pass context and runner
+			if err := app.HandleBugownerByPackage(ctx, cfg, defaultRunner, *pkgFlag); err != nil {
 				logger.Fatalf("Error handling bugowner by package: %v", err)
 			}
 		} else { // *maintainerFlag != ""
-			if err := app.HandlePackagesByMaintainer(cfg, *maintainerFlag); err != nil {
+			// Updated call to pass context and runner
+			if err := app.HandlePackagesByMaintainer(ctx, cfg, defaultRunner, *maintainerFlag); err != nil {
 				logger.Fatalf("Error handling packages by maintainer: %v", err)
 			}
 		}

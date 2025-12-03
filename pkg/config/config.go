@@ -15,11 +15,12 @@ import (
 
 // Config holds the application's configuration.
 type Config struct {
-	CacheDir     string          `yaml:"cache_dir"`
-	RepoURL      string          `yaml:"repo_url"`
-	RepoBranch   string          `yaml:"repo_branch"`
-	Logger       *logging.Logger `yaml:"-"` // Ignore logger for YAML (it's not a config value)
-	OutputWriter io.Writer       `yaml:"-"` // Ignore output writer for YAML (it's not a config value)
+	CacheDir                string          `yaml:"cache_dir"`
+	RepoURL                 string          `yaml:"repo_url"`
+	RepoBranch              string          `yaml:"repo_branch"`
+	OperationTimeoutSeconds int             `yaml:"operation_timeout_seconds"` // Timeout for various operations in seconds
+	Logger                  *logging.Logger `yaml:"-"`                         // Ignore logger for YAML (it's not a config value)
+	OutputWriter            io.Writer       `yaml:"-"`                         // Ignore output writer for YAML (it's not a config value)
 }
 
 // LoadConfig loads the configuration from a YAML file.
@@ -32,6 +33,11 @@ func LoadConfig(configPath string) (*Config, error) {
 	cfg := &Config{}
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal YAML config: %w", err)
+	}
+
+	// Set default OperationTimeoutSeconds if not provided
+	if cfg.OperationTimeoutSeconds == 0 {
+		cfg.OperationTimeoutSeconds = 300 // Default to 5 minutes
 	}
 
 	// Set default CacheDir if not provided in config file

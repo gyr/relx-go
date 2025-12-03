@@ -1,21 +1,25 @@
 package app
 
 import (
+	"context" // Import context for cancellation and timeouts
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/gyr/relx-go/pkg/command" // Import the new command runner interface
 	"github.com/gyr/relx-go/pkg/config"
 	"github.com/gyr/relx-go/pkg/gitutils"
 )
 
-var ManageRepo = gitutils.ManageRepo
-
 // prepareMaintainershipData ensures the repository is cloned/updated and loads the maintainership data from it.
-func prepareMaintainershipData(cfg *config.Config) (map[string][]string, error) {
-	// Clone or update the repository
-	localPath, err := ManageRepo(cfg)
+// It now accepts a context and a command.Runner, making it more testable and enabling
+// proper cancellation/timeout propagation.
+// This is an example of Dependency Injection: the 'runner' dependency is passed in,
+// rather than being created internally, improving modularity and testability.
+func prepareMaintainershipData(ctx context.Context, cfg *config.Config, runner command.Runner) (map[string][]string, error) {
+	// Clone or update the repository using the injected runner.
+	localPath, err := gitutils.ManageRepo(ctx, cfg, runner)
 	if err != nil {
 		return nil, fmt.Errorf("error cloning/updating repository: %w", err)
 	}
@@ -30,10 +34,12 @@ func prepareMaintainershipData(cfg *config.Config) (map[string][]string, error) 
 }
 
 // HandleBugownerByPackage fetches and displays the bug owners for a given package.
-func HandleBugownerByPackage(cfg *config.Config, pkg string) error {
+// It now accepts a context and a command.Runner, demonstrating Dependency Injection
+// for improved testability and operational control.
+func HandleBugownerByPackage(ctx context.Context, cfg *config.Config, runner command.Runner, pkg string) error {
 	cfg.Logger.Infof("Handling bug owner request for package %s", pkg)
 
-	maintainers, err := prepareMaintainershipData(cfg)
+	maintainers, err := prepareMaintainershipData(ctx, cfg, runner)
 	if err != nil {
 		return err
 	}
@@ -56,10 +62,12 @@ func HandleBugownerByPackage(cfg *config.Config, pkg string) error {
 }
 
 // HandlePackagesByMaintainer lists the packages maintained by a given user.
-func HandlePackagesByMaintainer(cfg *config.Config, maintainer string) error {
+// It now accepts a context and a command.Runner, demonstrating Dependency Injection
+// for improved testability and operational control.
+func HandlePackagesByMaintainer(ctx context.Context, cfg *config.Config, runner command.Runner, maintainer string) error {
 	cfg.Logger.Infof("Handling packages by maintainer request for %s", maintainer)
 
-	maintainers, err := prepareMaintainershipData(cfg)
+	maintainers, err := prepareMaintainershipData(ctx, cfg, runner)
 	if err != nil {
 		return err
 	}
