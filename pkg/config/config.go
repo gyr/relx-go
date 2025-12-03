@@ -18,6 +18,9 @@ type Config struct {
 	CacheDir                string          `yaml:"cache_dir"`
 	RepoURL                 string          `yaml:"repo_url"`
 	RepoBranch              string          `yaml:"repo_branch"`
+	OBSAPIURL               string          `yaml:"obs_api_url"`
+	PackageFilterPatterns   []string        `yaml:"package_filter_patterns"`
+	BinaryFilterPatterns    []string        `yaml:"binary_filter_patterns"`
 	OperationTimeoutSeconds int             `yaml:"operation_timeout_seconds"` // Timeout for various operations in seconds
 	Logger                  *logging.Logger `yaml:"-"`                         // Ignore logger for YAML (it's not a config value)
 	OutputWriter            io.Writer       `yaml:"-"`                         // Ignore output writer for YAML (it's not a config value)

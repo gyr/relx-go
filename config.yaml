@@ -1,5 +1,13 @@
 cache_dir: "~/.cache/relx-go" # Customize the directory for cloning repositories
 debug: true # Set to true to enable verbose debug logging
 repo_url: "https://example.com/user/repo.git"
-repo_branch: "main"
+repo_branch: "slfo-main"
 operation_timeout_seconds: 300 # Timeout for external operations in seconds (e.g., git commands)
+obs_api_url: "https://api.suse.de"
+package_filter_patterns:
+  - "000productcompose:sles_*"
+  - "SLES_transactional:*"
+  - "kiwi-templates-Minimal:*"
+binary_filter_patterns:
+  - "*.iso"
+  - "*.qcow2"

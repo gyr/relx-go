@@ -1,4 +1,4 @@
-package gitutils
+package commandtest
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 )
 
 // MockRunner is a mock implementation of the command.Runner for testing.
-// It is shared across all tests in the gitutils package.
+// It is shared across different packages to test components that depend on command.Runner.
 type MockRunner struct {
 	RunFunc func(ctx context.Context, workDir, name string, args ...string) ([]byte, error)
 }

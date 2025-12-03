@@ -74,3 +74,19 @@ func (l *Logger) Fatalf(format string, v ...interface{}) {
 	l.logger.SetPrefix("[FATAL] ")
 	l.logger.Fatalf(format, v...)
 }
+
+// Warn logs messages at the INFO level with a WARN prefix.
+func (l *Logger) Warn(v ...interface{}) {
+	if l.level >= LevelInfo {
+		l.logger.SetPrefix("[WARN] ")
+		l.logger.Println(v...)
+	}
+}
+
+// Warnf logs messages at the INFO level with a WARN prefix.
+func (l *Logger) Warnf(format string, v ...interface{}) {
+	if l.level >= LevelInfo {
+		l.logger.SetPrefix("[WARN] ")
+		l.logger.Printf(format, v...)
+	}
+}

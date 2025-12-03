@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gyr/relx-go/pkg/command/commandtest"
 	"github.com/gyr/relx-go/pkg/config"
 	"github.com/gyr/relx-go/pkg/logging"
 )
@@ -21,7 +22,7 @@ func TestFetchRemoteFile(t *testing.T) {
 
 	t.Run("SuccessfulFetch", func(t *testing.T) {
 		expectedContent := `{"pkg1": ["userA"]}`
-		mockRunner := &MockRunner{}
+		mockRunner := &commandtest.MockRunner{}
 		mockRunner.RunFunc = func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
 			// Check that the correct command is being run
 			expectedCmdPart := "git archive --remote=https://example.com/test.git main _maintainership.json"
@@ -43,7 +44,7 @@ func TestFetchRemoteFile(t *testing.T) {
 
 	t.Run("FailedFetch", func(t *testing.T) {
 		mockError := errors.New("git command failed")
-		mockRunner := &MockRunner{}
+		mockRunner := &commandtest.MockRunner{}
 		mockRunner.RunFunc = func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
 			return nil, mockError
 		}
@@ -63,7 +64,7 @@ func TestFetchRemoteFile(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
-		mockRunner := &MockRunner{}
+		mockRunner := &commandtest.MockRunner{}
 		mockRunner.RunFunc = func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
 			// The real runner would fail because the context is cancelled.
 			// We can simulate this behavior.

@@ -8,7 +8,7 @@ The resulting binary, **`relx-go`**, is self-contained and highly portable.
 
 ## ✨ Features
 
-*   **OBS Build Status:** Query the OBS API (`osc api`) for the build status of a specific package in a given project.
+*   **OBS Artifacts:** Fetch and filter binary artifacts for a specific package in a given OBS project.
 
 *   **Gitea Pull Requests:** Query the Gitea API (`git-obs api`) for a list of open pull requests in a given repository.
 
@@ -18,7 +18,7 @@ The resulting binary, **`relx-go`**, is self-contained and highly portable.
 
 *   **Well-tested:** The project has a comprehensive suite of unit tests to ensure the reliability of the code.
 
-*   **Configurable:** Supports loading configuration from a Lua file, allowing customization of various settings like cache directories.
+*   **Configurable:** Supports loading configuration from a YAML file, allowing customization of various settings like cache directories and API endpoints.
 
 *   **Debug Logging:** Provides verbose output for troubleshooting and development purposes, controllable via configuration or command-line flag.
 
@@ -136,8 +136,22 @@ If no configuration file is found, relx-go will proceed with default settings.
 ### Example `config.yaml`
 
 ```yaml
-cache_dir: "/path/to/your/custom/cache" # Customize the directory for cloning repositories
-debug: true # Set to true to enable verbose debug logging
+cache_dir: "~/.cache/relx-go"
+debug: true
+repo_url: "https://example.com/user/repo.git"
+repo_branch: "main"
+operation_timeout_seconds: 300
+obs_api_url: "https://api.suse.de"
+
+# Filter patterns for OBS packages
+package_filter_patterns:
+  - "000productcompose:sles_*"
+  - "SLES_transactional:*"
+
+# Filter patterns for binary artifacts
+binary_filter_patterns:
+  - "*.iso"
+  - "*.qcow2"
 ```
 
 ### Command-line Flags
@@ -172,23 +186,22 @@ Use the `pr` subcommand to list open pull requests for a given owner and reposit
 [102] Feature: New build step (State: open, URL: http://gitea/pr/102)
 ```
 
-### 2. Check OBS Build Status (OBS Backend)
+### 2. List OBS Artifacts (OBS Backend)
 
-Use the `status` subcommand to check the build status for a specific package in an OBS project.
+Use the `artifact` subcommand to list binary artifacts for a specific project in OBS.
 
-| Argument  | Description           |
-| --------- | --------------------- |
-| `project` | The OBS Project name. |
-| `package` | The package name.     |
+| Flag      | Description                |
+| --------- | -------------------------- |
+| `-p`      | The OBS Project name.      |
 
 ```bash
-./relx-go status openSUSE:Factory osc
+./relx-go artifact -p SUSE:SLFO:Product:SLES:16.1
 ```
 
 **Example Output:**
 
 ```
---- OBS Build Results for openSUSE:Factory/osc ---
-Project: openSUSE:Factory, Package: osc, Repo: openSUSE_Tumbleweed, Status: succeeded
-Project: openSUSE:Factory, Package: osc, Repo: openSUSE_Leap:15.5, Status: failed
+Artifacts for project 'SUSE:SLFO:Product:SLES:16.1':
+SLE-16.1-Installer-DVD-x86_64-Build1.1.iso
+SLE-16.1-Installer-DVD-x86_64-Build1.1.qcow2
 ```

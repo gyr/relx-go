@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gyr/relx-go/pkg/command/commandtest"
 	"github.com/gyr/relx-go/pkg/config"
 	"github.com/gyr/relx-go/pkg/logging"
 )
@@ -36,7 +37,7 @@ func TestManageRepo(t *testing.T) {
 	expectedRepoPath := filepath.Join(tempCacheDir, "test")
 
 	t.Run("InitialClone", func(t *testing.T) {
-		mockRunner := &MockRunner{}
+		mockRunner := &commandtest.MockRunner{}
 		mockRunner.RunFunc = func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
 			if name == "git" && len(args) > 0 && args[0] == "clone" {
 				if dir != "" {
@@ -67,7 +68,7 @@ func TestManageRepo(t *testing.T) {
 		createDummyGitRepo(t, expectedRepoPath)
 
 		var switchCalled, fetchCalled, pullCalled bool
-		mockRunner := &MockRunner{}
+		mockRunner := &commandtest.MockRunner{}
 		mockRunner.RunFunc = func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
 			if dir != expectedRepoPath {
 				t.Errorf("Expected dir %s, got %s", expectedRepoPath, dir)
@@ -115,7 +116,7 @@ func TestManageRepo(t *testing.T) {
 		}
 
 		mockError := errors.New("mock git clone failure")
-		mockRunner := &MockRunner{}
+		mockRunner := &commandtest.MockRunner{}
 		mockRunner.RunFunc = func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
 			if name == "git" && args[0] == "clone" {
 				return []byte("clone failed output"), mockError
@@ -136,7 +137,7 @@ func TestManageRepo(t *testing.T) {
 		createDummyGitRepo(t, expectedRepoPath)
 
 		mockError := errors.New("mock git fetch failure")
-		mockRunner := &MockRunner{}
+		mockRunner := &commandtest.MockRunner{}
 		mockRunner.RunFunc = func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
 			if name == "git" && args[0] == "switch" {
 				return []byte("switch success"), nil
@@ -160,7 +161,7 @@ func TestManageRepo(t *testing.T) {
 		createDummyGitRepo(t, expectedRepoPath)
 
 		mockError := errors.New("mock git pull failure")
-		mockRunner := &MockRunner{}
+		mockRunner := &commandtest.MockRunner{}
 		mockRunner.RunFunc = func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
 			if name == "git" && args[0] == "pull" {
 				return []byte("pull failed output"), mockError
@@ -179,7 +180,7 @@ func TestManageRepo(t *testing.T) {
 
 	t.Run("RepoURLMissing", func(t *testing.T) {
 		cfg := &config.Config{RepoBranch: "main", CacheDir: tempCacheDir}
-		_, err := ManageRepo(context.Background(), cfg, &MockRunner{})
+		_, err := ManageRepo(context.Background(), cfg, &commandtest.MockRunner{})
 		if err == nil {
 			t.Fatal("Expected an error for missing RepoURL, but got nil")
 		}
@@ -190,7 +191,7 @@ func TestManageRepo(t *testing.T) {
 
 	t.Run("RepoBranchMissing", func(t *testing.T) {
 		cfg := &config.Config{RepoURL: "https://example.com/test.git", CacheDir: tempCacheDir}
-		_, err := ManageRepo(context.Background(), cfg, &MockRunner{})
+		_, err := ManageRepo(context.Background(), cfg, &commandtest.MockRunner{})
 		if err == nil {
 			t.Fatal("Expected an error for missing RepoBranch, but got nil")
 		}
@@ -201,7 +202,7 @@ func TestManageRepo(t *testing.T) {
 
 	t.Run("InvalidRepoURL", func(t *testing.T) {
 		cfg := &config.Config{RepoURL: "https://", RepoBranch: "main", CacheDir: tempCacheDir}
-		_, err := ManageRepo(context.Background(), cfg, &MockRunner{})
+		_, err := ManageRepo(context.Background(), cfg, &commandtest.MockRunner{})
 		if err == nil {
 			t.Fatal("Expected an error for invalid RepoURL, but got nil")
 		}

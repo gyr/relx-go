@@ -64,7 +64,7 @@ func main() {
 
 	args := flag.Args() // Get non-flag arguments after flag.Parse()
 
-	validCommands := []string{"pr", "status", "bugowner"}
+	validCommands := []string{"pr", "bugowner", "artifact"}
 
 	if len(args) < 1 {
 		fmt.Println("Usage: relx-go <command> [arguments]")
@@ -83,36 +83,9 @@ func main() {
 		if len(commandArgs) < 2 {
 			logger.Fatal("Error: 'pr' requires owner and repo arguments.")
 		}
+		// TODO: HandlePullRequest also needs to be updated to accept context and runner
 		if err := app.HandlePullRequest(cfg, commandArgs[0], commandArgs[1]); err != nil {
 			logger.Fatalf("Error handling pull request: %v", err)
-		}
-
-	case "status":
-		statusCmd := flag.NewFlagSet("status", flag.ContinueOnError)
-		projectFlag := statusCmd.String("p", "", "OBS project")
-
-		statusCmd.Usage = func() {
-			fmt.Fprintf(os.Stderr, "Usage of %s status:\n", os.Args[0])
-			fmt.Fprintf(os.Stderr, "  -p <project>    OBS project\n")
-			fmt.Fprintf(os.Stderr, "  <package>       Package\n")
-		}
-
-		err := statusCmd.Parse(commandArgs)
-		if err != nil {
-			if err == flag.ErrHelp {
-				os.Exit(0)
-			}
-			// The flag package already printed an error and usage, so just exit.
-			os.Exit(1)
-		}
-
-		if *projectFlag == "" || statusCmd.NArg() < 1 {
-			fmt.Fprintf(os.Stderr, "Error: 'status' requires project and package arguments.\n")
-			statusCmd.Usage()
-			os.Exit(1)
-		}
-		if err := app.HandleBuildStatus(cfg, *projectFlag, statusCmd.Arg(0)); err != nil {
-			logger.Fatalf("Error handling build status: %v", err)
 		}
 
 	case "bugowner":
@@ -131,7 +104,6 @@ func main() {
 			if err == flag.ErrHelp {
 				os.Exit(0)
 			}
-			// The flag package already printed an error and usage, so just exit.
 			os.Exit(1)
 		}
 
@@ -152,6 +124,33 @@ func main() {
 				logger.Fatalf("Error handling packages by maintainer: %v", err)
 			}
 		}
+	case "artifact":
+		artifactCmd := flag.NewFlagSet("artifact", flag.ContinueOnError)
+		projectFlag := artifactCmd.String("p", "", "Specify the project to list artifacts from (mandatory)")
+
+		artifactCmd.Usage = func() {
+			fmt.Fprintf(os.Stderr, "Usage of %s artifact:\n", os.Args[0])
+			fmt.Fprintf(os.Stderr, "  -p, --project <project>   List all artifacts for a specific project\n")
+		}
+
+		err = artifactCmd.Parse(commandArgs)
+		if err != nil {
+			if err == flag.ErrHelp {
+				os.Exit(0)
+			}
+			os.Exit(1)
+		}
+
+		if *projectFlag == "" {
+			fmt.Fprintf(os.Stderr, "Error: a project must be specified using -p or --project.\n")
+			artifactCmd.Usage()
+			os.Exit(1)
+		}
+
+		if err := app.HandleArtifacts(ctx, cfg, defaultRunner, *projectFlag); err != nil {
+			logger.Fatalf("Error handling artifacts: %v", err)
+		}
+
 	default:
 		fmt.Printf("Unknown command: %s. Possible commands are:\n", command)
 		for _, cmd := range validCommands {
