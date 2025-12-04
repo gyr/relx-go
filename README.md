@@ -75,13 +75,17 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o relx-go cmd/relx-go/main.go
 
 ### Code Quality and Formatting
 
-To ensure code quality and consistency, the following commands are used:
+Before committing your changes, it is a best practice to run the following commands locally. These tools help automatically format your code, manage dependencies, and run tests, ensuring the code you commit is clean and correct.
 
-*   **Dependency Management:** `go mod tidy`
-*   **Code Formatting:** `go fmt ./...`
-*   **Static Analysis:** `go vet ./...`
-*   **Build:** `go build ./...`
-*   **Linting:** `golangci-lint run`
+*   **Format Code (`go fmt ./...`):** This command automatically reformats all Go source files in the project to follow the official Go style guidelines. It ensures consistency across the entire codebase.
+
+*   **Tidy Dependencies (`go mod tidy`):** This command analyzes your source code and updates your `go.mod` and `go.sum` files. It adds any new dependencies that are required and removes any that are no longer used. It is essential for keeping your project's dependency list accurate.
+
+*   **Run Linter (`golangci-lint run`):** This runs a powerful linter that checks for a wide variety of programming mistakes, styling issues, and potential bugs. It implicitly runs `go vet` and many other checks, making a separate `go vet` step redundant.
+
+*   **Build Application (`go build -v ./...`):** This command compiles the entire application. It's a great final check to ensure all the code is syntactically correct and the project builds successfully as a whole.
+
+*   **Run Tests (`go test -v -race ./...`):** This runs all the unit tests in the project. The `-race` flag enables Go's race detector, which is invaluable for finding and debugging concurrency problems in your code.
 
 ### Troubleshooting Build Issues
 
@@ -111,12 +115,15 @@ go test -v ./...
 
 ## CI Validation
 
-The following commands are recommended for a CI/CD pipeline to validate the code:
+The Continuous Integration (CI) pipeline automatically validates all code that is pushed to the repository. Its purpose is not to *fix* the code, but to *verify* that the code is correct and adheres to the project's standards. This acts as a safety net. The following steps are performed:
 
-1.  **Install Dependencies:** `go get github.com/stretchr/testify/assert`
-2.  **Tidy Modules:** `go mod tidy`
-3.  **Run Tests:** `go test ./...`
-4.  **Build for Production:** `CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o relx-go cmd/relx-go/main.go`
+1.  **Verify Modules (`go mod verify`):** This command checks that the dependencies recorded in `go.sum` are consistent and haven't been tampered with. Unlike `go mod tidy`, it doesn't change any files; it just verifies the state of the committed dependency files.
+
+2.  **Linting:** This step runs `golangci-lint` to check for code quality issues. It ensures that any committed code has already passed the linter checks. The CI will fail if the linter finds any problems.
+
+3.  **Build (`go build -v ./...`):** This command compiles the entire application to ensure that the code is syntactically correct and all dependencies can be resolved.
+
+4.  **Run Tests (`go test -v -race ./...`):** This step runs the same test command that is used locally, including the race detector. It confirms that all tests pass on a clean environment, ensuring the changes haven't introduced any regressions.
 
 ## ⚙️ Configuration
 
