@@ -18,9 +18,9 @@ func TestListArtifacts(t *testing.T) {
 	mockCfg := &config.Config{
 		OBSAPIURL: "https://api.suse.de",
 		Logger:    logging.NewLogger(logging.LevelDebug),
-		PackageFilterPatterns: []string{
-			"000product*", // simplified for testing
-			"SLES_transactional:*",
+		PackageFilterPatterns: []config.PackageFilter{
+			{Pattern: "000product*", Repository: "repo1"},
+			{Pattern: "SLES_transactional:*", Repository: "repo2"},
 		},
 		BinaryFilterPatterns: []string{
 			"*.report", // only include report files
@@ -59,11 +59,11 @@ unrelated-package
 			cmd := strings.Join(args, " ")
 			if strings.Contains(cmd, "ls -b") {
 				switch {
-				case strings.Contains(cmd, "000productcompose:sles_product"):
+				case strings.Contains(cmd, "000productcompose:sles_product") && strings.Contains(cmd, "-r repo1"):
 					return []byte(binariesForProductCompose), nil
-				case strings.Contains(cmd, "SLES_transactional:self-install"):
+				case strings.Contains(cmd, "SLES_transactional:self-install") && strings.Contains(cmd, "-r repo2"):
 					return []byte(binariesForTransactional), nil
-				case strings.Contains(cmd, "000product-another"):
+				case strings.Contains(cmd, "000product-another") && strings.Contains(cmd, "-r repo1"):
 					return []byte(binariesForAnother), nil
 				default:
 					return nil, fmt.Errorf("unexpected ls -b command for package in: %s", cmd)
@@ -183,7 +183,7 @@ product/x86_64
 		}
 
 		client := NewClient(mockRunner, mockCfg)
-		binaries, err := client.listBinariesForPackage(context.Background(), project, pkg)
+		binaries, err := client.listBinariesForPackage(context.Background(), project, pkg, "")
 
 		if err != nil {
 			t.Fatalf("Expected no error, got %v", err)
@@ -210,7 +210,7 @@ product/x86_64
 		}
 
 		client := NewClient(mockRunner, mockCfg)
-		_, err := client.listBinariesForPackage(context.Background(), project, pkg)
+		_, err := client.listBinariesForPackage(context.Background(), project, pkg, "")
 
 		if err == nil {
 			t.Fatal("Expected an error, but got nil")

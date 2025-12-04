@@ -44,66 +44,56 @@ func (c *Client) ListArtifacts(ctx context.Context, project string) ([]string, e
 	}
 	c.cfg.Logger.Debugf("Found %d packages in project %s.", len(packages), project)
 
-	// Step 2: Filter the package list based on configured patterns.
-	var filteredPackages []string
+	// Step 2: Filter the package list based on configured patterns and associate them with a repository.
+	// A map is used to store the package -> repository mapping, which also de-duplicates packages.
+	filteredPackages := make(map[string]string)
 	if len(c.cfg.PackageFilterPatterns) > 0 {
 		for _, pkg := range packages {
-			for _, pattern := range c.cfg.PackageFilterPatterns {
-				matched, err := filepath.Match(pattern, pkg)
+			for _, filter := range c.cfg.PackageFilterPatterns {
+				matched, err := filepath.Match(filter.Pattern, pkg)
 				if err != nil {
-					c.cfg.Logger.Warnf("Invalid pattern '%s' in config: %v", pattern, err)
+					c.cfg.Logger.Warnf("Invalid pattern '%s' in config: %v", filter.Pattern, err)
 					continue
 				}
 				if matched {
-					filteredPackages = append(filteredPackages, pkg)
+					filteredPackages[pkg] = filter.Repository
 					break // Match found, no need to check other patterns for this package
 				}
 			}
 		}
 	} else {
-		// If no patterns are defined, include all packages.
-		filteredPackages = packages
+		// If no package filters are defined, we cannot proceed because we don't know which
+		// repositories to target. The user must be explicit.
+		c.cfg.Logger.Infof("No package_filter_patterns defined in config. No packages to process.")
 	}
 
 	c.cfg.Logger.Infof("Found %d packages matching filter patterns.", len(filteredPackages))
-	c.cfg.Logger.Debugf("Filtered packages: %v", filteredPackages)
+	c.cfg.Logger.Debugf("Filtered packages and their repositories: %v", filteredPackages)
+
+	if len(filteredPackages) == 0 {
+		return []string{}, nil
+	}
 
 	// Step 3: Concurrently get binaries for each filtered package.
-	// Use a WaitGroup to wait for all goroutines to finish.
 	var wg sync.WaitGroup
-	// Create a buffered channel to collect errors from goroutines.
-	// The buffer size is the number of packages, so each goroutine can send an error without blocking.
 	errCh := make(chan error, len(filteredPackages))
-	// Create a buffered channel to collect the results (lists of binaries) from goroutines.
 	resultsCh := make(chan []string, len(filteredPackages))
-	// Create a semaphore to limit the number of concurrent 'osc' commands.
-	// This prevents overwhelming the system with too many processes.
 	sem := make(chan struct{}, maxConcurrentOscCalls)
 
-	// Loop over each filtered package and start a goroutine to process it.
-	for _, pkg := range filteredPackages {
-		// Acquire a slot from the semaphore. This will block if the maximum number of
-		// concurrent goroutines is already running.
+	for pkg, repo := range filteredPackages {
 		sem <- struct{}{}
-		// Increment the WaitGroup counter.
 		wg.Add(1)
-		// Launch a new goroutine.
-		go func(pkgName string) {
-			// Decrement the WaitGroup counter when the goroutine finishes.
+		go func(pkgName, repoName string) {
 			defer wg.Done()
-			// Release the slot back to the semaphore.
 			defer func() { <-sem }()
 
-			// Call the function to get the binaries for the package.
-			binaries, err := c.listBinariesForPackage(ctx, project, pkgName)
+			binaries, err := c.listBinariesForPackage(ctx, project, pkgName, repoName)
 			if err != nil {
-				// If there's an error, send it to the error channel.
 				errCh <- fmt.Errorf("failed to list binaries for package '%s': %w", pkgName, err)
 				return
 			}
-			// If successful, send the list of binaries to the results channel.
 			resultsCh <- binaries
-		}(pkg)
+		}(pkg, repo)
 	}
 
 	// Start a separate goroutine to wait for all other goroutines to complete.
@@ -197,35 +187,42 @@ func (c *Client) listPackages(ctx context.Context, project string) ([]string, er
 	return cleanedPackages, nil
 }
 
-// listBinariesForPackage runs `osc ls -b` for a single package.
-func (c *Client) listBinariesForPackage(ctx context.Context, project, pkg string) ([]string, error) {
+// listBinariesForPackage runs `osc ls -b` for a single package and optional repository.
+func (c *Client) listBinariesForPackage(ctx context.Context, project, pkg, repository string) ([]string, error) {
 	timeout := time.Duration(c.cfg.OperationTimeoutSeconds) * time.Second
 	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	c.cfg.Logger.Debugf("Executing 'osc ls -b' for package: %s", pkg)
+	c.cfg.Logger.Debugf("Executing 'osc ls -b' for package: %s, repository: %s", pkg, repository)
 
-	var output []byte
-	var err error
-
+	args := []string{"ls", "-b", project, pkg}
 	if c.cfg.OBSAPIURL != "" {
-		output, err = c.runner.Run(timeoutCtx, "" /* workDir */, "osc", "-A", c.cfg.OBSAPIURL, "ls", "-b", project, pkg)
-	} else {
-		output, err = c.runner.Run(timeoutCtx, "" /* workDir */, "osc", "ls", "-b", project, pkg)
+		// Prepend -A <api_url> to the argument list
+		args = append([]string{"-A", c.cfg.OBSAPIURL}, args...)
+	}
+	if repository != "" {
+		args = append(args, "-r", repository)
 	}
 
+	output, err := c.runner.Run(timeoutCtx, "" /* workDir */, "osc", args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run 'osc ls -b' for package '%s': %w. Output: %s", pkg, err, string(output))
 	}
 
 	binaries := strings.Split(string(output), "\n")
 
-	var cleanedBinaries []string
+	// Use a map to automatically handle duplicates from osc's output.
+	cleanedBinariesMap := make(map[string]struct{})
 	for _, b := range binaries {
-		// Filter lines that start with a space but not with " _"
 		if strings.HasPrefix(b, " ") && !strings.HasPrefix(b, " _") {
-			cleanedBinaries = append(cleanedBinaries, strings.TrimSpace(b))
+			cleanedBinariesMap[strings.TrimSpace(b)] = struct{}{}
 		}
+	}
+
+	// Convert map keys back to a slice.
+	var cleanedBinaries []string
+	for b := range cleanedBinariesMap {
+		cleanedBinaries = append(cleanedBinaries, b)
 	}
 
 	return cleanedBinaries, nil

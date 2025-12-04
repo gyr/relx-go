@@ -5,9 +5,12 @@ repo_branch: "slfo-main"
 operation_timeout_seconds: 300 # Timeout for external operations in seconds (e.g., git commands)
 obs_api_url: "https://api.suse.de"
 package_filter_patterns:
-  - "000productcompose:sles_*"
-  - "SLES_transactional:*"
-  - "kiwi-templates-Minimal:*"
+  - pattern: "000productcompose:sles_*"
+    repository: "product" # Example: specify repository for this pattern
+  - pattern: "SLES_transactional:*"
+    repository: "transactional" # Example: specify repository for this pattern
+  - pattern: "kiwi-templates-Minimal:*"
+    repository: "images" # Example: specify repository for this pattern
 binary_filter_patterns:
   - "*.iso"
   - "*.qcow2"

@@ -13,13 +13,20 @@ import (
 	"github.com/gyr/relx-go/pkg/logging"
 )
 
+// PackageFilter defines the structure for a package filter, associating
+// a pattern with a specific repository.
+type PackageFilter struct {
+	Pattern    string `yaml:"pattern"`
+	Repository string `yaml:"repository"`
+}
+
 // Config holds the application's configuration.
 type Config struct {
 	CacheDir                string          `yaml:"cache_dir"`
 	RepoURL                 string          `yaml:"repo_url"`
 	RepoBranch              string          `yaml:"repo_branch"`
 	OBSAPIURL               string          `yaml:"obs_api_url"`
-	PackageFilterPatterns   []string        `yaml:"package_filter_patterns"`
+	PackageFilterPatterns   []PackageFilter `yaml:"package_filter_patterns"`
 	BinaryFilterPatterns    []string        `yaml:"binary_filter_patterns"`
 	OperationTimeoutSeconds int             `yaml:"operation_timeout_seconds"` // Timeout for various operations in seconds
 	Logger                  *logging.Logger `yaml:"-"`                         // Ignore logger for YAML (it's not a config value)
