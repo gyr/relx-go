@@ -7,34 +7,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gyr/relx-go/pkg/command"
+	"github.com/gyr/relx-go/pkg/command/commandtest" // Import the shared mock runner
 	"github.com/gyr/relx-go/pkg/config"
 	"github.com/gyr/relx-go/pkg/logging"
 )
-
-// MockRunner is a mock implementation of the command.Runner for testing.
-type MockRunner struct {
-	RunFunc func(ctx context.Context, workDir, name string, args ...string) ([]byte, error)
-}
-
-// This line is a compile-time check to ensure MockRunner implements command.Runner.
-var _ command.Runner = (*MockRunner)(nil)
-
-// Run executes the mock command.
-func (m *MockRunner) Run(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
-	if m.RunFunc != nil {
-		return m.RunFunc(ctx, workDir, name, args...)
-	}
-	// Default behavior: success with no output. This can be used for tests that don't care about the output.
-	return nil, nil
-}
 
 func TestHandleBugownerByPackage(t *testing.T) {
 	const repoURL = "https://example.com/test/repo.git"
 	const maintainershipContent = `{"pkg1": ["userA", "userB"], "pkg2": ["userC"]}`
 
 	// This is the mock for a successful git archive call.
-	successfulRunner := &MockRunner{
+	successfulRunner := &commandtest.MockRunner{
 		RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
 			// Check if the command is what we expect
 			if name == "bash" && strings.Contains(args[1], "git archive") {
@@ -98,7 +81,7 @@ func TestHandleBugownerByPackage(t *testing.T) {
 		}
 
 		mockError := errors.New("git archive failed")
-		failedRunner := &MockRunner{
+		failedRunner := &commandtest.MockRunner{
 			RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
 				return nil, mockError
 			},
@@ -118,7 +101,7 @@ func TestHandlePackagesByMaintainer(t *testing.T) {
 	const repoURL = "https://example.com/test/repo.git"
 	const maintainershipContent = `{"pkg1": ["userA", "userB"], "pkg2": ["userC"], "pkg3": ["userA"]}`
 
-	successfulRunner := &MockRunner{
+	successfulRunner := &commandtest.MockRunner{
 		RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
 			if name == "bash" && strings.Contains(args[1], "git archive") {
 				return []byte(maintainershipContent), nil
@@ -180,7 +163,7 @@ func TestHandlePackagesByMaintainer(t *testing.T) {
 			RepoBranch:   "main",
 		}
 
-		malformedRunner := &MockRunner{
+		malformedRunner := &commandtest.MockRunner{
 			RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
 				return []byte("this is not json"), nil
 			},
