@@ -64,7 +64,7 @@ func main() {
 
 	args := flag.Args() // Get non-flag arguments after flag.Parse()
 
-	validCommands := []string{"pr", "bugowner", "artifact"}
+	validCommands := []string{"review", "bugowner", "artifact"}
 
 	if len(args) < 1 {
 		fmt.Println("Usage: relx-go <command> [arguments]")
@@ -79,13 +79,33 @@ func main() {
 	commandArgs := args[1:]
 
 	switch command {
-	case "pr":
-		if len(commandArgs) < 2 {
-			logger.Fatal("Error: 'pr' requires owner and repo arguments.")
+	case "review":
+		reviewCmd := flag.NewFlagSet("review", flag.ContinueOnError)
+		branchFlag := reviewCmd.String("b", "", "Specify the branch")
+		repoFlag := reviewCmd.String("r", "", "Specify the repository")
+
+		reviewCmd.Usage = func() {
+			fmt.Fprintf(os.Stderr, "Usage of %s review:\n", os.Args[0])
+			fmt.Fprintf(os.Stderr, "  -b, --branch <branch>       Get pull requests for a specific branch\n")
+			fmt.Fprintf(os.Stderr, "  -r, --repository <repository>   Get pull requests for a specific repository\n")
 		}
-		// TODO: HandlePullRequest also needs to be updated to accept context and runner
-		if err := app.HandlePullRequest(cfg, commandArgs[0], commandArgs[1]); err != nil {
-			logger.Fatalf("Error handling pull request: %v", err)
+
+		err = reviewCmd.Parse(commandArgs)
+		if err != nil {
+			if err == flag.ErrHelp {
+				os.Exit(0)
+			}
+			os.Exit(1)
+		}
+
+		if *branchFlag == "" || *repoFlag == "" {
+			fmt.Fprintf(os.Stderr, "Error: For 'review', you must provide both -b (branch) and -r (repository).\n")
+			reviewCmd.Usage()
+			os.Exit(1)
+		}
+
+		if err := app.HandleReview(cfg, *repoFlag, *branchFlag); err != nil {
+			logger.Fatalf("Error handling review: %v", err)
 		}
 
 	case "bugowner":

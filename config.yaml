@@ -3,14 +3,13 @@ debug: true # Set to true to enable verbose debug logging
 repo_url: "https://example.com/user/repo.git"
 repo_branch: "slfo-main"
 operation_timeout_seconds: 300 # Timeout for external operations in seconds (e.g., git commands)
-obs_api_url: "https://api.suse.de"
+obs_api_url: "https://obs.api.url"
 package_filter_patterns:
-  - pattern: "000productcompose:sles_*"
-    repository: "product" # Example: specify repository for this pattern
-  - pattern: "SLES_transactional:*"
-    repository: "transactional" # Example: specify repository for this pattern
-  - pattern: "kiwi-templates-Minimal:*"
-    repository: "images" # Example: specify repository for this pattern
+  - pattern: "multipackage1:prefix*"
+    repository: "repository1" # Example: specify repository for this pattern
+  - pattern: "multipacakge2:*"
+    repository: "repository2" # Example: specify repository for this pattern
 binary_filter_patterns:
   - "*.iso"
   - "*.qcow2"
+pr_reviewer: "review_user"

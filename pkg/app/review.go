@@ -7,10 +7,14 @@ import (
 	"github.com/gyr/relx-go/pkg/gitea"
 )
 
-// HandlePullRequest initializes the Gitea client, fetches PRs, and prints the results.
-// This function encapsulates the business logic for the 'pr' command.
-func HandlePullRequest(cfg *config.Config, owner, repo string) error {
-	cfg.Logger.Debugf("Handling pull request for owner=%s, repo=%s", owner, repo)
+// HandleReview initializes the Gitea client, fetches PRs, and prints the results.
+// This function encapsulates the business logic for the 'review' command.
+func HandleReview(cfg *config.Config, owner, repo string) error {
+	cfg.Logger.Debugf("Handling review for owner=%s, repo=%s", owner, repo)
+
+	if cfg.PRReviewer == "" {
+		return fmt.Errorf("missing 'pr_reviewer' configuration")
+	}
 
 	// Initialize the specific Gitea client
 	giteaClient := gitea.NewClient(cfg.CacheDir)

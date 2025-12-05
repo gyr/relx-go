@@ -26,6 +26,7 @@ type Config struct {
 	RepoURL                 string          `yaml:"repo_url"`
 	RepoBranch              string          `yaml:"repo_branch"`
 	OBSAPIURL               string          `yaml:"obs_api_url"`
+	PRReviewer              string          `yaml:"pr_reviewer"`
 	PackageFilterPatterns   []PackageFilter `yaml:"package_filter_patterns"`
 	BinaryFilterPatterns    []string        `yaml:"binary_filter_patterns"`
 	OperationTimeoutSeconds int             `yaml:"operation_timeout_seconds"` // Timeout for various operations in seconds

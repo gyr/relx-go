@@ -172,17 +172,20 @@ Command-line flags provide a way to override or supplement configuration setting
 
 The primary executable is `relx-go`. Commands are dispatched to the appropriate backend based on the subcommand used.
 
-### 1. Check Pull Request Status (Gitea Backend)
+---
+### 1. Review Pull Requests (Gitea Backend)
 
-Use the `pr` subcommand to list open pull requests for a given owner and repository.
+Use the `review` subcommand to list open pull requests for a given branch and repository.
 
-| Argument | Description                  |
-| -------- | ---------------------------- |
-| `owner`  | The repository owner/organization. |
-| `repo`   | The repository name.         |
+| Flag      | Description                  |
+| --------- | ---------------------------- |
+| `-b`      | The branch to review.         |
+| `-r`      | The repository to review.     |
+
+**Note:** The `pr_reviewer` configuration must be set in your `config.yaml` file for this subcommand to work.
 
 ```bash
-./relx-go pr openSUSE osc
+./relx-go review -b master -r osc
 ```
 
 **Example Output:**
