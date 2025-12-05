@@ -104,7 +104,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err := app.HandleReview(cfg, *repoFlag, *branchFlag); err != nil {
+		if err := app.HandleReview(ctx, cfg, defaultRunner, *branchFlag, *repoFlag); err != nil {
 			logger.Fatalf("Error handling review: %v", err)
 		}
 
