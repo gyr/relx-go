@@ -10,7 +10,7 @@ The resulting binary, **`relx-go`**, is self-contained and highly portable.
 
 *   **OBS Artifacts:** Fetch and filter binary artifacts for a specific package in a given OBS project.
 
-*   **Gitea Pull Requests:** Query the Gitea API (`git-obs api`) for a list of open pull requests in a given repository.
+*   **Gitea Pull Requests:** Interactively review open pull requests from Gitea. This includes listing PRs based on reviewer, branch, and repository, viewing content and diffs using `delta`, and taking actions like approving (placeholder), skipping, or exiting the review process.
 
 *   **Single Binary:** Zero runtime dependencies (beyond the `git-obs` and `osc` commands themselves).
 
@@ -32,7 +32,7 @@ Since this is a CLI application, you can easily build it using the Go toolchain.
 
 1.  [Go 1.21+](https://go.dev/doc/install)
 
-2.  The external command-line tools (`osc` and `git-obs api`) must be installed and accessible in your system's PATH.
+2.  The external command-line tools (`osc`, `git-obs api`, and `delta`) must be installed and accessible in your system's PATH.
 
 ### Building the Executable
 
@@ -175,7 +175,13 @@ The primary executable is `relx-go`. Commands are dispatched to the appropriate 
 ---
 ### 1. Review Pull Requests (Gitea Backend)
 
-Use the `review` subcommand to list open pull requests for a given branch and repository.
+Use the `review` subcommand to interactively review open pull requests for a given branch and repository.
+
+The workflow is as follows:
+1.  The command lists all open pull requests for the specified reviewer, branch, and repository.
+2.  You will be prompted if you wish to proceed with reviewing these pull requests.
+3.  If you confirm, each pull request's timeline and patch (diff) will be displayed using `delta` (allowing you to scroll and inspect changes).
+4.  After reviewing each PR, you will be prompted to 'approve' (placeholder for future implementation), 'skip' (move to the next PR), or 'exit' (terminate the review process).
 
 | Flag      | Description                  |
 | --------- | ---------------------------- |
@@ -188,12 +194,19 @@ Use the `review` subcommand to list open pull requests for a given branch and re
 ./relx-go review -b master -r osc
 ```
 
-**Example Output:**
+**Example Output (interactive flow):**
 
 ```
---- Open Pull Requests in openSUSE/osc ---
-[101] Fix: Critical bug (State: open, URL: http://gitea/pr/101)
-[102] Feature: New build step (State: open, URL: http://gitea/pr/102)
+--- Open Pull Requests for Review ---
+PR ID: 499
+PR ID: 496
+Do you want to review these pull requests? (y/n): y
+(Delta will now display PR 499 content and diff, interact with Delta)
+Approve, skip, or exit? (a/s/e): s
+Skipping PR 499.
+(Delta will now display PR 496 content and diff, interact with Delta)
+Approve, skip, or exit? (a/s/e): a
+PR 496 approved (future implementation).
 ```
 
 ### 2. List OBS Artifacts (OBS Backend)
