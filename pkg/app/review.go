@@ -56,9 +56,42 @@ func HandleReview(ctx context.Context, cfg *config.Config, runner command.Runner
 	response = strings.ToLower(strings.TrimSpace(response))
 
 	if response == "y" || response == "yes" {
-		// Placeholder for future implementation
-		if _, err := fmt.Fprintf(cfg.OutputWriter, "Proceeding with review (future implementation).\n"); err != nil {
-			return err
+		for _, id := range prIDs {
+			if err := giteaClient.ShowPullRequest(ctx, repository, id); err != nil {
+				return fmt.Errorf("failed to show pull request %s: %w", id, err)
+			}
+
+			if _, err := fmt.Fprintf(cfg.OutputWriter, "Approve, skip, or exit? (a/s/e): "); err != nil {
+				return err
+			}
+
+			actionResponse, err := reader.ReadString('\n')
+			if err != nil {
+				return fmt.Errorf("failed to read user input: %w", err)
+			}
+			actionResponse = strings.ToLower(strings.TrimSpace(actionResponse))
+
+			switch actionResponse {
+			case "a", "approve":
+				// Placeholder for future implementation
+				if _, err := fmt.Fprintf(cfg.OutputWriter, "PR %s approved (future implementation).\n", id); err != nil {
+					return err
+				}
+			case "s", "skip":
+				if _, err := fmt.Fprintf(cfg.OutputWriter, "Skipping PR %s.\n", id); err != nil {
+					return err
+				}
+				continue
+			case "e", "exit":
+				if _, err := fmt.Fprintf(cfg.OutputWriter, "Exiting review process.\n"); err != nil {
+					return err
+				}
+				return nil
+			default:
+				if _, err := fmt.Fprintf(cfg.OutputWriter, "Invalid option. Skipping PR %s.\n", id); err != nil {
+					return err
+				}
+			}
 		}
 	} else {
 		if _, err := fmt.Fprintf(cfg.OutputWriter, "Exiting without review.\n"); err != nil {

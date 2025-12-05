@@ -73,3 +73,53 @@ State       : open
 		}
 	})
 }
+
+func TestShowPullRequest(t *testing.T) {
+	mockCfg := &config.Config{
+		Logger:                  logging.NewLogger(logging.LevelDebug),
+		OperationTimeoutSeconds: 5,
+	}
+	const repository = "test_repo"
+	const prID = "123"
+
+	t.Run("Success", func(t *testing.T) {
+		mockRunner := &commandtest.MockRunner{}
+		mockRunner.RunPipelineFunc = func(ctx context.Context, workDir string, cmd1, cmd2 []string) error {
+			expectedCmd1 := []string{"git-obs", "pr", "show", "--timeline", "--patch", "test_repo#123"}
+			expectedCmd2 := []string{"delta"}
+			if !reflect.DeepEqual(cmd1, expectedCmd1) {
+				return fmt.Errorf("unexpected arguments for cmd1: got %v, want %v", cmd1, expectedCmd1)
+			}
+			if !reflect.DeepEqual(cmd2, expectedCmd2) {
+				return fmt.Errorf("unexpected arguments for cmd2: got %v, want %v", cmd2, expectedCmd2)
+			}
+			return nil
+		}
+
+		client := NewClient(mockRunner, mockCfg)
+		err := client.ShowPullRequest(context.Background(), repository, prID)
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+	})
+
+	t.Run("Command fails", func(t *testing.T) {
+		mockError := errors.New("git-obs command failed")
+		mockRunner := &commandtest.MockRunner{
+			RunPipelineFunc: func(ctx context.Context, workDir string, cmd1, cmd2 []string) error {
+				return mockError
+			},
+		}
+
+		client := NewClient(mockRunner, mockCfg)
+		err := client.ShowPullRequest(context.Background(), repository, prID)
+
+		if err == nil {
+			t.Fatal("Expected an error, but got nil")
+		}
+
+		if !strings.Contains(err.Error(), mockError.Error()) {
+			t.Errorf("Expected error to contain '%v', but got '%v'", mockError, err)
+		}
+	})
+}

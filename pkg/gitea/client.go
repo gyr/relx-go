@@ -3,15 +3,12 @@ package gitea
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
 
 	"github.com/gyr/relx-go/pkg/command"
 	"github.com/gyr/relx-go/pkg/config"
-	"github.com/gyr/relx-go/pkg/core"
 )
 
 // Client handles interaction with the Gitea API via the 'git-obs api' command.
@@ -28,31 +25,23 @@ func NewClient(runner command.Runner, cfg *config.Config) *Client {
 	}
 }
 
-// GetPullRequests executes the git-obs command to fetch pull requests and unmarshals the JSON output.
-func (c *Client) GetPullRequests(ctx context.Context, owner string) ([]core.PullRequest, error) {
-	apiPath, err := buildGiteaURL(owner)
-	if err != nil {
-		return nil, fmt.Errorf("gitea: failed to build API URL: %w", err)
-	}
-
+// ShowPullRequest executes the `git obs pr show` command and pipes its output to `delta` to display the content and diff of a pull request.
+func (c *Client) ShowPullRequest(ctx context.Context, repository, prID string) error {
 	timeout := time.Duration(c.cfg.OperationTimeoutSeconds) * time.Second
 	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	output, err := c.runner.Run(timeoutCtx, "" /* workDir */, "git-obs", "api", apiPath)
-	if err != nil {
-		return nil, fmt.Errorf("gitea: 'git-obs api' failed: %w", err)
+	gitObsCmd := []string{
+		"git-obs",
+		"pr",
+		"show",
+		"--timeline",
+		"--patch",
+		fmt.Sprintf("%s#%s", repository, prID),
 	}
+	deltaCmd := []string{"delta"}
 
-	var response struct {
-		Issues []core.PullRequest `json:"issues"`
-	}
-
-	if err := json.Unmarshal(output, &response); err != nil {
-		return nil, fmt.Errorf("gitea: failed to parse JSON output: %w\nOutput received: %s", err, string(output))
-	}
-
-	return response.Issues, nil
+	return c.runner.RunPipeline(timeoutCtx, "" /* workDir */, gitObsCmd, deltaCmd)
 }
 
 // GetOpenPullRequests executes the `git obs pr list` command to get the list of open pull requests.
@@ -94,18 +83,4 @@ func (c *Client) GetOpenPullRequests(ctx context.Context, prReviewer, branch, re
 	}
 
 	return prIDs, nil
-}
-
-func buildGiteaURL(owner string) (string, error) {
-	u, err := url.Parse("/repos/issues/search")
-	if err != nil {
-		return "", err
-	}
-	q := u.Query()
-	q.Set("type", "pulls")
-	q.Set("owner", owner)
-	q.Set("state", "open")
-	q.Set("limit", "50")
-	u.RawQuery = q.Encode()
-	return u.String(), nil
 }

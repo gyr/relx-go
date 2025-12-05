@@ -10,7 +10,9 @@ import (
 // MockRunner is a mock implementation of the command.Runner for testing.
 // It is shared across different packages to test components that depend on command.Runner.
 type MockRunner struct {
-	RunFunc func(ctx context.Context, workDir, name string, args ...string) ([]byte, error)
+	RunFunc            func(ctx context.Context, workDir, name string, args ...string) ([]byte, error)
+	RunInteractiveFunc func(ctx context.Context, workDir, name string, args ...string) error
+	RunPipelineFunc    func(ctx context.Context, workDir string, cmd1, cmd2 []string) error
 }
 
 // This line is a compile-time check to ensure MockRunner implements command.Runner.
@@ -22,4 +24,20 @@ func (m *MockRunner) Run(ctx context.Context, workDir, name string, args ...stri
 		return m.RunFunc(ctx, workDir, name, args...)
 	}
 	return nil, fmt.Errorf("RunFunc not defined for mock runner")
+}
+
+// RunInteractive executes the mock interactive command.
+func (m *MockRunner) RunInteractive(ctx context.Context, workDir, name string, args ...string) error {
+	if m.RunInteractiveFunc != nil {
+		return m.RunInteractiveFunc(ctx, workDir, name, args...)
+	}
+	return fmt.Errorf("RunInteractiveFunc not defined for mock runner")
+}
+
+// RunPipeline executes the mock pipeline command.
+func (m *MockRunner) RunPipeline(ctx context.Context, workDir string, cmd1, cmd2 []string) error {
+	if m.RunPipelineFunc != nil {
+		return m.RunPipelineFunc(ctx, workDir, cmd1, cmd2)
+	}
+	return fmt.Errorf("RunPipelineFunc not defined for mock runner")
 }
