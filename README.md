@@ -10,7 +10,7 @@ The resulting binary, **`relx-go`**, is self-contained and highly portable.
 
 *   **OBS Artifacts:** Fetch and filter binary artifacts for a specific package in a given OBS project.
 
-*   **Gitea Pull Requests:** Interactively review open pull requests from Gitea. This includes listing PRs based on reviewer, branch, and repository, viewing content and diffs using `delta`, and taking actions like approving (placeholder), skipping, or exiting the review process.
+*   **Gitea Pull Requests:** Interactively review open pull requests from Gitea. This includes listing PRs based on reviewer, branch, and repository, viewing content and diffs using `delta`, and taking actions like approving, skipping, or exiting the review process.
 
 *   **Single Binary:** Zero runtime dependencies (beyond the `git-obs` and `osc` commands themselves).
 
@@ -148,8 +148,7 @@ debug: true
 repo_url: "https://example.com/user/repo.git"
 repo_branch: "main"
 operation_timeout_seconds: 300
-obs_api_url: "https://api.suse.de"
-
+pr_reviewer: "your_gitea_username" # Example: Specify the default PR reviewer
 # Filter patterns for OBS packages
 package_filter_patterns:
   - "000productcompose:sles_*"
@@ -181,17 +180,18 @@ The workflow is as follows:
 1.  The command lists all open pull requests for the specified reviewer, branch, and repository.
 2.  You will be prompted if you wish to proceed with reviewing these pull requests.
 3.  If you confirm, each pull request's timeline and patch (diff) will be displayed using `delta` (allowing you to scroll and inspect changes).
-4.  After reviewing each PR, you will be prompted to 'approve' (placeholder for future implementation), 'skip' (move to the next PR), or 'exit' (terminate the review process).
+4.  After reviewing each PR, you will be prompted to 'approve', 'skip' (move to the next PR), or 'exit' (terminate the review process).
 
 | Flag      | Description                  |
 | --------- | ---------------------------- |
 | `-b`      | The branch to review.         |
 | `-r`      | The repository to review.     |
+| `-u`      | The PR reviewer (overrides 'pr_reviewer' in config.yaml). |
 
-**Note:** The `pr_reviewer` configuration must be set in your `config.yaml` file for this subcommand to work.
+**Note:** The `pr_reviewer` configuration must be set in your `config.yaml` file, or provided via the `-u` / `--user` flag for this subcommand to work. The `-u` flag takes precedence over the `pr_reviewer` setting in the configuration file.
 
 ```bash
-./relx-go review -b master -r osc
+./relx-go review -b master -r osc -u my_reviewer_username
 ```
 
 **Example Output (interactive flow):**
@@ -206,7 +206,7 @@ Approve, skip, or exit? (a/s/e): s
 Skipping PR 499.
 (Delta will now display PR 496 content and diff, interact with Delta)
 Approve, skip, or exit? (a/s/e): a
-PR 496 approved (future implementation).
+PR 496 approved.
 ```
 
 ### 2. List OBS Artifacts (OBS Backend)
