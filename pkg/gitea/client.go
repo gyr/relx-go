@@ -84,3 +84,24 @@ func (c *Client) GetOpenPullRequests(ctx context.Context, prReviewer, branch, re
 
 	return prIDs, nil
 }
+
+// ApprovePullRequest adds a comment to the PR.
+func (c *Client) ApprovePullRequest(ctx context.Context, repository, prID, reviewer string) error {
+	timeout := time.Duration(c.cfg.OperationTimeoutSeconds) * time.Second
+	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	args := []string{
+		"pr",
+		"comment",
+		fmt.Sprintf("%s#%s", repository, prID),
+		"--message",
+		fmt.Sprintf(" @%s: approve", reviewer),
+	}
+
+	_, err := c.runner.Run(timeoutCtx, "" /* workDir */, "git-obs", args...)
+	if err != nil {
+		return fmt.Errorf("gitea: 'git-obs pr comment' failed: %w", err)
+	}
+	return nil
+}

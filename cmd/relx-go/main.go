@@ -83,11 +83,13 @@ func main() {
 		reviewCmd := flag.NewFlagSet("review", flag.ContinueOnError)
 		branchFlag := reviewCmd.String("b", "", "Specify the branch")
 		repoFlag := reviewCmd.String("r", "", "Specify the repository")
+		userFlag := reviewCmd.String("u", "", "Specify the PR reviewer")
 
 		reviewCmd.Usage = func() {
 			fmt.Fprintf(os.Stderr, "Usage of %s review:\n", os.Args[0])
 			fmt.Fprintf(os.Stderr, "  -b, --branch <branch>       Get pull requests for a specific branch\n")
 			fmt.Fprintf(os.Stderr, "  -r, --repository <repository>   Get pull requests for a specific repository\n")
+			fmt.Fprintf(os.Stderr, "  -u, --user <user>             Specify the PR reviewer\n")
 		}
 
 		err = reviewCmd.Parse(commandArgs)
@@ -104,7 +106,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err := app.HandleReview(ctx, cfg, defaultRunner, *branchFlag, *repoFlag); err != nil {
+		if err := app.HandleReview(ctx, cfg, defaultRunner, *branchFlag, *repoFlag, *userFlag); err != nil {
 			logger.Fatalf("Error handling review: %v", err)
 		}
 

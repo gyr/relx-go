@@ -14,22 +14,29 @@ import (
 
 // HandleReview initializes the Gitea client, fetches PRs, and prints the results.
 // This function encapsulates the business logic for the 'review' command.
-func HandleReview(ctx context.Context, cfg *config.Config, runner command.Runner, branch, repository string) error {
+func HandleReview(ctx context.Context, cfg *config.Config, runner command.Runner, branch, repository, user string) error {
 	cfg.Logger.Debugf("Handling review for branch=%s, repository=%s", branch, repository)
 
-	if cfg.PRReviewer == "" {
-		return fmt.Errorf("missing 'pr_reviewer' configuration")
+	var reviewer string
+	if user != "" {
+		reviewer = user
+	} else {
+		reviewer = cfg.PRReviewer
+	}
+
+	if reviewer == "" {
+		return fmt.Errorf("missing 'pr_reviewer' configuration and no user specified with -u/--user")
 	}
 
 	giteaClient := gitea.NewClient(runner, cfg)
 
-	prIDs, err := giteaClient.GetOpenPullRequests(ctx, cfg.PRReviewer, branch, repository)
+	prIDs, err := giteaClient.GetOpenPullRequests(ctx, reviewer, branch, repository)
 	if err != nil {
 		return fmt.Errorf("failed to get open pull requests: %w", err)
 	}
 
 	if len(prIDs) == 0 {
-		if _, err := fmt.Fprintf(cfg.OutputWriter, "No open pull requests found for reviewer '%s' on branch '%s' in repository '%s'.\n", cfg.PRReviewer, branch, repository); err != nil {
+		if _, err := fmt.Fprintf(cfg.OutputWriter, "No open pull requests found for reviewer '%s' on branch '%s' in repository '%s'.\n", reviewer, branch, repository); err != nil {
 			return err
 		}
 		return nil
@@ -73,8 +80,10 @@ func HandleReview(ctx context.Context, cfg *config.Config, runner command.Runner
 
 			switch actionResponse {
 			case "a", "approve":
-				// Placeholder for future implementation
-				if _, err := fmt.Fprintf(cfg.OutputWriter, "PR %s approved (future implementation).\n", id); err != nil {
+				if err := giteaClient.ApprovePullRequest(ctx, repository, id, reviewer); err != nil {
+					return fmt.Errorf("failed to approve pull request %s: %w", id, err)
+				}
+				if _, err := fmt.Fprintf(cfg.OutputWriter, "PR %s approved.\n", id); err != nil {
 					return err
 				}
 			case "s", "skip":
