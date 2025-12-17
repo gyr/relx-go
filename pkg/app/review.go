@@ -29,20 +29,37 @@ func HandleReview(ctx context.Context, cfg *config.Config, runner command.Runner
 	}
 
 	giteaClient := gitea.NewClient(runner, cfg)
-	var allPRs []string
-	var err error
 
-	if len(prIDs) > 0 {
-		allPRs = prIDs
-	} else {
-		allPRs, err = giteaClient.GetOpenPullRequests(ctx, reviewer, branch, repository)
-		if err != nil {
-			return fmt.Errorf("failed to get open pull requests: %w", err)
-		}
+	// Always get PRs by branch first, as branch is now mandatory.
+	fetchedPRs, err := giteaClient.GetOpenPullRequests(ctx, reviewer, branch, repository)
+	if err != nil {
+		return fmt.Errorf("failed to get open pull requests for branch '%s': %w", branch, err)
 	}
 
-	if len(allPRs) == 0 {
-		if _, err := fmt.Fprintf(cfg.OutputWriter, "No open pull requests found.\n"); err != nil {
+	var prsToReview []string
+	if len(prIDs) > 0 {
+		// User provided specific PR IDs, so filter the fetched PRs.
+		fetchedPRsMap := make(map[string]struct{}, len(fetchedPRs))
+		for _, id := range fetchedPRs {
+			fetchedPRsMap[id] = struct{}{}
+		}
+
+		for _, providedID := range prIDs {
+			if _, exists := fetchedPRsMap[providedID]; exists {
+				prsToReview = append(prsToReview, providedID)
+			} else {
+				if _, err := fmt.Fprintf(cfg.OutputWriter, "Info: PR #%s (provided with -p) was not found pending review on branch '%s'.\n", providedID, branch); err != nil {
+					return err
+				}
+			}
+		}
+	} else {
+		// No specific PR IDs provided, review all fetched PRs for the branch.
+		prsToReview = fetchedPRs
+	}
+
+	if len(prsToReview) == 0 {
+		if _, err := fmt.Fprintf(cfg.OutputWriter, "No open pull requests found for review.\n"); err != nil {
 			return err
 		}
 		return nil
@@ -51,7 +68,7 @@ func HandleReview(ctx context.Context, cfg *config.Config, runner command.Runner
 	if _, err := fmt.Fprintf(cfg.OutputWriter, "\n--- Open Pull Requests for Review ---\n"); err != nil {
 		return err
 	}
-	for _, id := range allPRs {
+	for _, id := range prsToReview {
 		if _, err := fmt.Fprintf(cfg.OutputWriter, "PR ID: %s\n", id); err != nil {
 			return err
 		}
@@ -69,9 +86,10 @@ func HandleReview(ctx context.Context, cfg *config.Config, runner command.Runner
 	response = strings.ToLower(strings.TrimSpace(response))
 
 	if response == "y" || response == "yes" {
-		for _, id := range allPRs {
+		for _, id := range prsToReview {
 			if err := giteaClient.ShowPullRequest(ctx, repository, id); err != nil {
-				return fmt.Errorf("failed to show pull request %s: %w", id, err)
+				cfg.Logger.Warnf("Failed to show pull request %s: %v. Skipping.", id, err)
+				continue
 			}
 
 			if _, err := fmt.Fprintf(cfg.OutputWriter, "Approve, skip, or exit? (a/s/e): "); err != nil {
@@ -87,10 +105,11 @@ func HandleReview(ctx context.Context, cfg *config.Config, runner command.Runner
 			switch actionResponse {
 			case "a", "approve":
 				if err := giteaClient.ApprovePullRequest(ctx, repository, id, reviewer); err != nil {
-					return fmt.Errorf("failed to approve pull request %s: %w", id, err)
-				}
-				if _, err := fmt.Fprintf(cfg.OutputWriter, "PR %s approved.\n", id); err != nil {
-					return err
+					cfg.Logger.Warnf("Failed to approve pull request %s: %v.", id, err)
+				} else {
+					if _, err := fmt.Fprintf(cfg.OutputWriter, "PR %s approved.\n", id); err != nil {
+						return err
+					}
 				}
 			case "s", "skip":
 				if _, err := fmt.Fprintf(cfg.OutputWriter, "Skipping PR %s.\n", id); err != nil {

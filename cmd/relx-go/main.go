@@ -89,8 +89,8 @@ func main() {
 
 		reviewCmd.Usage = func() {
 			fmt.Fprintf(os.Stderr, "Usage of %s review:\n", os.Args[0])
-			fmt.Fprintf(os.Stderr, "  -b, --branch <branch>       Get pull requests for a specific branch (mutually exclusive with -p)\n")
-			fmt.Fprintf(os.Stderr, "  -p, --pr-id <id1,id2,...> Get pull requests for specific PR IDs (mutually exclusive with -b)\n")
+			fmt.Fprintf(os.Stderr, "  -b, --branch <branch>       Get pull requests for a specific branch (mandatory)\n")
+			fmt.Fprintf(os.Stderr, "  -p, --pr-id <id1,id2,...> Filter pull requests by specific PR IDs (optional)\n")
 			fmt.Fprintf(os.Stderr, "  -r, --repository <repository>   Get pull requests for a specific repository\n")
 			fmt.Fprintf(os.Stderr, "  -u, --user <user>             Specify the PR reviewer\n")
 		}
@@ -103,8 +103,8 @@ func main() {
 			os.Exit(1)
 		}
 
-		if (*branchFlag == "" && *prIDFlag == "") || (*branchFlag != "" && *prIDFlag != "") {
-			fmt.Fprintf(os.Stderr, "Error: For 'review', you must provide either -b (branch) OR -p (pr-id), but not both.\n")
+		if *branchFlag == "" {
+			fmt.Fprintf(os.Stderr, "Error: For 'review', you must provide -b (branch).\n")
 			reviewCmd.Usage()
 			os.Exit(1)
 		}

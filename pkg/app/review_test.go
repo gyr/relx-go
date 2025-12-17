@@ -72,7 +72,7 @@ func TestHandleReview(t *testing.T) {
 			userInput:      "y\na\n",
 			userFlag:       "",
 			configReviewer: reviewer,
-			prIDs:          []string{}, // Empty slice to test branch logic
+			prIDs:          []string{}, // Test branch-only logic
 			runner: &commandtest.MockRunner{
 				RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
 					if name == "git-obs" && args[0] == "pr" && args[1] == "list" {
@@ -97,27 +97,47 @@ func TestHandleReview(t *testing.T) {
 			wantOutput: []string{"PR ID: 123", "Approve, skip, or exit?", "PR 123 approved."},
 		},
 		{
-			name:           "Success_Approve_With_PR_IDs",
-			userInput:      "y\na\na\n",
+			name:           "Success - Filter with valid PR ID",
+			userInput:      "y\na\n",
 			userFlag:       "",
 			configReviewer: reviewer,
-			prIDs:          []string{"123", "456"}, // Provide PR IDs directly
+			prIDs:          []string{"123"},
 			runner: &commandtest.MockRunner{
-				// No RunFunc needed for 'pr list' as it should be skipped
-				RunPipelineFunc: func(ctx context.Context, workDir string, cmd1, cmd2 []string) error {
-					// This will be called for 'pr show'
-					return nil
-				},
 				RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
-					// This will be called for 'pr comment' (approval)
+					if name == "git-obs" && args[0] == "pr" && args[1] == "list" {
+						return []byte("ID: #123\nID: #456"), nil // Return two PRs
+					}
 					if name == "git-obs" && args[0] == "pr" && args[1] == "comment" {
 						return nil, nil
 					}
 					return nil, nil
 				},
+				RunPipelineFunc: func(ctx context.Context, workDir string, cmd1, cmd2 []string) error {
+					return nil // For 'pr show'
+				},
 			},
 			wantErr:    "",
-			wantOutput: []string{"PR ID: 123", "PR ID: 456", "PR 123 approved.", "PR 456 approved."},
+			wantOutput: []string{"PR ID: 123", "PR 123 approved."},
+		},
+		{
+			name:           "Warning - PR ID not found on branch",
+			userInput:      "", // No user input needed as no PRs will be reviewed
+			userFlag:       "",
+			configReviewer: reviewer,
+			prIDs:          []string{"999"}, // This PR is not in the fetched list
+			runner: &commandtest.MockRunner{
+				RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
+					if name == "git-obs" && args[0] == "pr" && args[1] == "list" {
+						return []byte("ID: #123\nID: #456"), nil
+					}
+					return nil, nil
+				},
+			},
+			wantErr: "",
+			wantOutput: []string{
+				"Info: PR #999 (provided with -p) was not found pending review on branch 'test-branch'.",
+				"No open pull requests found for review.",
+			},
 		},
 		{
 			name:           "No PRs found",
