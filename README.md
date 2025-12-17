@@ -177,21 +177,26 @@ The primary executable is `relx-go`. Commands are dispatched to the appropriate 
 Use the `review` subcommand to interactively review open pull requests for a given branch and repository.
 
 The workflow is as follows:
-1.  The command lists all open pull requests for the specified reviewer, branch, and repository.
+1.  The command lists all open pull requests for the specified reviewer, either by `branch` or by explicit `PR IDs`.
 2.  You will be prompted if you wish to proceed with reviewing these pull requests.
 3.  If you confirm, each pull request's timeline and patch (diff) will be displayed using `delta` (allowing you to scroll and inspect changes).
 4.  After reviewing each PR, you will be prompted to 'approve', 'skip' (move to the next PR), or 'exit' (terminate the review process).
 
 | Flag      | Description                  |
 | --------- | ---------------------------- |
-| `-b`      | The branch to review.         |
+| `-b`      | The branch to review (mutually exclusive with `-p`).         |
+| `-p`      | One or more comma-separated PR IDs to review (mutually exclusive with `-b`).     |
 | `-r`      | The repository to review.     |
 | `-u`      | The PR reviewer (overrides 'pr_reviewer' in config.yaml). |
 
 **Note:** The `pr_reviewer` configuration must be set in your `config.yaml` file, or provided via the `-u` / `--user` flag for this subcommand to work. The `-u` flag takes precedence over the `pr_reviewer` setting in the configuration file.
 
 ```bash
+# Example using branch
 ./relx-go review -b master -r osc -u my_reviewer_username
+
+# Example using PR IDs
+./relx-go review -p 123,456 -r osc -u my_reviewer_username
 ```
 
 **Example Output (interactive flow):**

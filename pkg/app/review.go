@@ -14,8 +14,8 @@ import (
 
 // HandleReview initializes the Gitea client, fetches PRs, and prints the results.
 // This function encapsulates the business logic for the 'review' command.
-func HandleReview(ctx context.Context, cfg *config.Config, runner command.Runner, branch, repository, user string) error {
-	cfg.Logger.Debugf("Handling review for branch=%s, repository=%s", branch, repository)
+func HandleReview(ctx context.Context, cfg *config.Config, runner command.Runner, branch string, prIDs []string, repository, user string) error {
+	cfg.Logger.Debugf("Handling review for branch=%s, prIDs=%v, repository=%s", branch, prIDs, repository)
 
 	var reviewer string
 	if user != "" {
@@ -29,14 +29,20 @@ func HandleReview(ctx context.Context, cfg *config.Config, runner command.Runner
 	}
 
 	giteaClient := gitea.NewClient(runner, cfg)
+	var allPRs []string
+	var err error
 
-	prIDs, err := giteaClient.GetOpenPullRequests(ctx, reviewer, branch, repository)
-	if err != nil {
-		return fmt.Errorf("failed to get open pull requests: %w", err)
+	if len(prIDs) > 0 {
+		allPRs = prIDs
+	} else {
+		allPRs, err = giteaClient.GetOpenPullRequests(ctx, reviewer, branch, repository)
+		if err != nil {
+			return fmt.Errorf("failed to get open pull requests: %w", err)
+		}
 	}
 
-	if len(prIDs) == 0 {
-		if _, err := fmt.Fprintf(cfg.OutputWriter, "No open pull requests found for reviewer '%s' on branch '%s' in repository '%s'.\n", reviewer, branch, repository); err != nil {
+	if len(allPRs) == 0 {
+		if _, err := fmt.Fprintf(cfg.OutputWriter, "No open pull requests found.\n"); err != nil {
 			return err
 		}
 		return nil
@@ -45,7 +51,7 @@ func HandleReview(ctx context.Context, cfg *config.Config, runner command.Runner
 	if _, err := fmt.Fprintf(cfg.OutputWriter, "\n--- Open Pull Requests for Review ---\n"); err != nil {
 		return err
 	}
-	for _, id := range prIDs {
+	for _, id := range allPRs {
 		if _, err := fmt.Fprintf(cfg.OutputWriter, "PR ID: %s\n", id); err != nil {
 			return err
 		}
@@ -63,7 +69,7 @@ func HandleReview(ctx context.Context, cfg *config.Config, runner command.Runner
 	response = strings.ToLower(strings.TrimSpace(response))
 
 	if response == "y" || response == "yes" {
-		for _, id := range prIDs {
+		for _, id := range allPRs {
 			if err := giteaClient.ShowPullRequest(ctx, repository, id); err != nil {
 				return fmt.Errorf("failed to show pull request %s: %w", id, err)
 			}

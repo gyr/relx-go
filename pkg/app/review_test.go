@@ -42,7 +42,6 @@ func mockStdin(t *testing.T, input string) func() {
 		os.Stdin = oldStdin
 	}
 }
-
 func TestHandleReview(t *testing.T) {
 	// Common test setup
 	const branch = "test-branch"
@@ -63,15 +62,17 @@ func TestHandleReview(t *testing.T) {
 		userInput      string
 		userFlag       string
 		configReviewer string
+		prIDs          []string // New field for passing PR IDs
 		runner         *commandtest.MockRunner
 		wantErr        string
 		wantOutput     []string
 	}{
 		{
-			name:           "Success_Approve_PR",
+			name:           "Success_Approve_PR_From_Branch",
 			userInput:      "y\na\n",
 			userFlag:       "",
 			configReviewer: reviewer,
+			prIDs:          []string{}, // Empty slice to test branch logic
 			runner: &commandtest.MockRunner{
 				RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
 					if name == "git-obs" && args[0] == "pr" && args[1] == "list" {
@@ -96,10 +97,34 @@ func TestHandleReview(t *testing.T) {
 			wantOutput: []string{"PR ID: 123", "Approve, skip, or exit?", "PR 123 approved."},
 		},
 		{
+			name:           "Success_Approve_With_PR_IDs",
+			userInput:      "y\na\na\n",
+			userFlag:       "",
+			configReviewer: reviewer,
+			prIDs:          []string{"123", "456"}, // Provide PR IDs directly
+			runner: &commandtest.MockRunner{
+				// No RunFunc needed for 'pr list' as it should be skipped
+				RunPipelineFunc: func(ctx context.Context, workDir string, cmd1, cmd2 []string) error {
+					// This will be called for 'pr show'
+					return nil
+				},
+				RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
+					// This will be called for 'pr comment' (approval)
+					if name == "git-obs" && args[0] == "pr" && args[1] == "comment" {
+						return nil, nil
+					}
+					return nil, nil
+				},
+			},
+			wantErr:    "",
+			wantOutput: []string{"PR ID: 123", "PR ID: 456", "PR 123 approved.", "PR 456 approved."},
+		},
+		{
 			name:           "No PRs found",
 			userInput:      "",
 			userFlag:       "",
 			configReviewer: reviewer,
+			prIDs:          []string{},
 			runner: &commandtest.MockRunner{
 				RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
 					if name == "git-obs" && args[0] == "pr" && args[1] == "list" {
@@ -116,6 +141,7 @@ func TestHandleReview(t *testing.T) {
 			userInput:      "y\na\n",
 			userFlag:       "cli-user",
 			configReviewer: reviewer,
+			prIDs:          []string{},
 			runner: &commandtest.MockRunner{
 				RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
 					if name == "git-obs" && args[0] == "pr" && args[1] == "list" {
@@ -141,6 +167,7 @@ func TestHandleReview(t *testing.T) {
 			userInput:      "",
 			userFlag:       "",
 			configReviewer: "", // No reviewer in config
+			prIDs:          []string{},
 			runner:         &commandtest.MockRunner{},
 			wantErr:        "missing 'pr_reviewer' configuration",
 		},
@@ -149,6 +176,7 @@ func TestHandleReview(t *testing.T) {
 			userInput:      "",
 			userFlag:       "",
 			configReviewer: reviewer,
+			prIDs:          []string{},
 			runner: &commandtest.MockRunner{
 				RunFunc: func(ctx context.Context, workDir, name string, args ...string) ([]byte, error) {
 					return nil, errors.New("gitea is down")
@@ -168,7 +196,7 @@ func TestHandleReview(t *testing.T) {
 			cfg := baseConfig()
 			cfg.PRReviewer = tc.configReviewer
 
-			err := HandleReview(context.Background(), cfg, tc.runner, branch, repository, tc.userFlag)
+			err := HandleReview(context.Background(), cfg, tc.runner, branch, tc.prIDs, repository, tc.userFlag)
 
 			if tc.wantErr != "" {
 				if err == nil {

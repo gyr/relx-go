@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/gyr/relx-go/pkg/app"
 	"github.com/gyr/relx-go/pkg/command" // Import the new command runner
@@ -82,12 +83,14 @@ func main() {
 	case "review":
 		reviewCmd := flag.NewFlagSet("review", flag.ContinueOnError)
 		branchFlag := reviewCmd.String("b", "", "Specify the branch")
+		prIDFlag := reviewCmd.String("p", "", "Specify one or more comma-separated PR IDs")
 		repoFlag := reviewCmd.String("r", "", "Specify the repository")
 		userFlag := reviewCmd.String("u", "", "Specify the PR reviewer")
 
 		reviewCmd.Usage = func() {
 			fmt.Fprintf(os.Stderr, "Usage of %s review:\n", os.Args[0])
-			fmt.Fprintf(os.Stderr, "  -b, --branch <branch>       Get pull requests for a specific branch\n")
+			fmt.Fprintf(os.Stderr, "  -b, --branch <branch>       Get pull requests for a specific branch (mutually exclusive with -p)\n")
+			fmt.Fprintf(os.Stderr, "  -p, --pr-id <id1,id2,...> Get pull requests for specific PR IDs (mutually exclusive with -b)\n")
 			fmt.Fprintf(os.Stderr, "  -r, --repository <repository>   Get pull requests for a specific repository\n")
 			fmt.Fprintf(os.Stderr, "  -u, --user <user>             Specify the PR reviewer\n")
 		}
@@ -100,13 +103,24 @@ func main() {
 			os.Exit(1)
 		}
 
-		if *branchFlag == "" || *repoFlag == "" {
-			fmt.Fprintf(os.Stderr, "Error: For 'review', you must provide both -b (branch) and -r (repository).\n")
+		if (*branchFlag == "" && *prIDFlag == "") || (*branchFlag != "" && *prIDFlag != "") {
+			fmt.Fprintf(os.Stderr, "Error: For 'review', you must provide either -b (branch) OR -p (pr-id), but not both.\n")
 			reviewCmd.Usage()
 			os.Exit(1)
 		}
 
-		if err := app.HandleReview(ctx, cfg, defaultRunner, *branchFlag, *repoFlag, *userFlag); err != nil {
+		if *repoFlag == "" {
+			fmt.Fprintf(os.Stderr, "Error: For 'review', you must provide -r (repository).\n")
+			reviewCmd.Usage()
+			os.Exit(1)
+		}
+
+		var prIDs []string
+		if *prIDFlag != "" {
+			prIDs = strings.Split(*prIDFlag, ",")
+		}
+
+		if err := app.HandleReview(ctx, cfg, defaultRunner, *branchFlag, prIDs, *repoFlag, *userFlag); err != nil {
 			logger.Fatalf("Error handling review: %v", err)
 		}
 
